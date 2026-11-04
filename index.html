@@ -1,0 +1,2706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>G.Cole Rotation Optimizer</title>
+<meta name="description" content="Fair 3-shift station rotation from your team skills. Data stays on this device.">
+<meta name="theme-color" content="#12161b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="G.Cole Rotation Optimizer">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2312161b'/%3E%3Cpath d='M8 22V10h3.2l4.8 7.2L20.8 10H24v12h-2.6v-7.4L17.2 22h-2.4l-4.2-7.4V22z' fill='%234fa8ff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@600;700&display=swap">
+<style>
+:root {
+  --canvas: #12161b;
+  --panel: #1b2129;
+  --panel-2: #222a33;
+  --line: #2c3540;
+  --ink: #e8ecef;
+  --muted: #8b96a3;
+  --good: #33c97a;
+  --good-dim: #1e5c3c;
+  --action: #4fa8ff;
+  --action-dim: #1e4a6e;
+  --action-fg: #dceeff;
+  --bad: #e07a7a;
+  --bad-dim: #4a2020;
+  --bad-fg: #ffc9c9;
+  --warn: #e8a33d;
+  --warn-dim: #4a3818;
+  --warn-fg: #f5ddae;
+  --font: "IBM Plex Sans", "Segoe UI", sans-serif;
+  --heading: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--canvas); color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.45; }
+button, [role="button"] { font: inherit; color: inherit; cursor: pointer; }
+button:disabled { cursor: default; opacity: 0.5; }
+h2 { margin: 0 0 8px; font-family: var(--heading); font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+p { margin: 0; }
+b { font-weight: 600; }
+.wrap { width: min(48rem, 100%); margin: 0 auto; }
+.top { position: sticky; top: 0; z-index: 20; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--canvas) 94%, transparent); backdrop-filter: blur(10px); padding: 4px 12px 8px; }
+.brand { margin: 0; text-align: right; font-size: 12px; color: var(--muted); }
+.tabs { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-top: 4px; }
+.tab { min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--muted); font-size: 12px; font-weight: 600; padding: 2px; }
+.tab.on { border-color: var(--action); background: var(--action-dim); color: var(--action-fg); }
+.ico { width: 16px; height: 16px; }
+.main { padding: 12px 12px 28px; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.stack.tight { gap: 8px; }
+.card { border: 1px solid var(--line); background: var(--panel); border-radius: 12px; padding: 12px; }
+.card.flush { padding: 0; overflow: hidden; }
+.card.off { border-color: color-mix(in srgb, var(--bad) 50%, var(--line)); }
+.muted { color: var(--muted); font-size: 14px; }
+.fine { color: var(--muted); font-size: 12px; padding: 8px 12px 12px; }
+.card > .fine { padding: 0; margin-top: 8px; }
+.bad { color: var(--bad-fg); font-size: 14px; }
+.warn-text { color: var(--warn-fg); font-size: 14px; }
+.ink { color: var(--ink); }
+.action { color: var(--action); }
+.good { color: var(--good); }
+.warn { color: var(--warn); }
+.pad { padding: 16px; }
+.kicker { margin: 0 0 4px; font-family: var(--heading); font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.kicker.tight { margin: 0; }
+.kicker.gap, .gap { margin-top: 12px; }
+.btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); padding: 8px 12px; font-size: 14px; font-weight: 600; }
+.btn:active:not(:disabled) { transform: scale(0.98); }
+.btn.primary { border-color: var(--action); background: var(--action-dim); color: var(--action-fg); }
+.btn.danger { border-color: var(--bad); background: var(--bad-dim); color: var(--bad-fg); }
+.btn.block { width: 100%; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.span2 { grid-column: span 2; }
+.days { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.day { min-height: 44px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); color: var(--muted); font-size: 14px; font-weight: 600; }
+.day.on { border-color: var(--action); background: var(--action-dim); color: var(--action-fg); }
+.day.idle { display: grid; place-items: center; font-size: 12px; }
+.check { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 14px; }
+.check.small { min-height: 0; font-size: 12px; color: var(--muted); margin: 0; }
+.field { width: 100%; min-height: 44px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); padding: 10px 12px; font: inherit; }
+.field:focus { outline: none; border-color: var(--action); }
+.area { min-height: 112px; resize: vertical; }
+.status { min-height: 20px; font-size: 14px; color: var(--muted); }
+.status.ok { color: var(--good); }
+.status.err { color: var(--bad); }
+.status.busy { color: var(--action); }
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.stats.half { grid-template-columns: 1fr 1fr; }
+.stat { border: 1px solid var(--line); background: var(--panel-2); border-radius: 12px; padding: 10px 12px; }
+.stat-n { font-family: var(--heading); font-size: 28px; line-height: 1; font-weight: 700; }
+.stat-n.good { color: var(--good); }
+.stat-n.warn { color: var(--warn); }
+.stat-l { margin-top: 4px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.spares { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.spare { border: 1px solid var(--line); background: var(--panel-2); border-radius: 12px; padding: 8px; }
+.spare p { margin-top: 4px; font-size: 14px; line-height: 1.35; }
+.row { display: flex; align-items: center; gap: 8px; }
+.row.spread { justify-content: space-between; align-items: baseline; padding: 12px 12px 0; }
+.card > .row.spread { padding: 0; margin-bottom: 8px; }
+.scroll { max-height: 50vh; overflow: auto; }
+.matrix-scroll { max-height: 62vh; border: 1px solid var(--line); border-radius: 12px; }
+table { border-collapse: collapse; width: 100%; }
+.rota { text-align: left; font-size: 12px; }
+.rota thead th { position: sticky; top: 0; background: var(--panel-2); color: var(--muted); text-transform: uppercase; text-align: left; padding: 8px; }
+.rota tbody th { padding: 8px; font-weight: 600; text-align: left; border-top: 1px solid var(--line); }
+.rota td { border-top: 1px solid var(--line); padding: 0; }
+.slot-btn { min-height: 44px; width: 100%; text-align: left; background: transparent; border: 0; padding: 8px; overflow-wrap: anywhere; }
+.slot.empty .slot-btn { color: var(--muted); }
+.slot.warn { background: color-mix(in srgb, var(--warn) 30%, transparent); color: var(--warn-fg); }
+.slot.bad { background: color-mix(in srgb, var(--bad) 35%, transparent); color: var(--bad-fg); }
+.five { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.mini { min-height: 44px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); color: var(--muted); font-size: 12px; font-weight: 600; }
+.mini.on { border-color: var(--action); background: var(--action-dim); color: var(--action-fg); }
+.mini.block { border-color: var(--warn); background: var(--warn-dim); color: var(--warn-fg); }
+.mini.off { border-color: var(--bad); background: var(--bad-dim); color: var(--bad-fg); }
+.matrix { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; font-size: 12px; }
+.matrix th, .matrix td { border-top: 1px solid var(--line); }
+.matrix thead th { position: sticky; top: 0; z-index: 2; background: var(--panel-2); color: var(--muted); padding: 8px 4px; text-align: center; }
+.matrix .sticky { position: sticky; left: 0; z-index: 1; background: var(--panel); min-width: 148px; text-align: left; }
+.matrix thead .sticky { z-index: 3; background: var(--panel-2); }
+.name { width: 140px; background: transparent; border: 0; color: var(--ink); font: inherit; padding: 8px; }
+.name:focus { outline: none; }
+.cell { width: 44px; height: 44px; display: grid; place-items: center; background: transparent; border: 0; }
+.mark { width: 24px; height: 24px; border-radius: 4px; display: grid; place-items: center; }
+.mark .ico { width: 14px; height: 14px; }
+.mark.empty { border: 1px solid var(--line); background: var(--panel-2); }
+.mark.good { background: var(--good); color: var(--canvas); }
+.mark.warn { background: var(--warn); color: var(--canvas); font-size: 12px; font-weight: 700; }
+.mark.bad { background: var(--bad); color: var(--bad-fg); }
+.pair { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 8px; }
+.pair:first-of-type { margin-top: 0; }
+.station { font-family: var(--heading); font-size: 18px; }
+.pill { margin-left: auto; border-radius: 999px; padding: 4px 8px; font-size: 12px; font-weight: 600; }
+.pill.ok { background: var(--good-dim); color: var(--good); }
+.pill.tight { background: var(--warn-dim); color: var(--warn-fg); }
+.pill.critical { background: var(--bad-dim); color: var(--bad-fg); }
+.pill.none { background: var(--bad); color: var(--canvas); }
+ul { margin: 0; padding: 0; list-style: none; }
+.help { margin: 0; padding-left: 20px; color: var(--muted); font-size: 14px; display: flex; flex-direction: column; gap: 8px; }
+.banner { display: flex; align-items: center; gap: 8px; border-radius: 12px; padding: 8px 12px; margin-bottom: 12px; font-size: 14px; }
+.banner.warn { border: 1px solid var(--warn); background: var(--warn-dim); color: var(--warn-fg); }
+.banner.hint { border: 1px solid var(--action); background: var(--action-dim); color: var(--action-fg); }
+.banner p { flex: 1; }
+.icon-btn { width: 44px; height: 44px; display: grid; place-items: center; background: transparent; border: 0; color: inherit; }
+.sheet-back { position: fixed; inset: 0; z-index: 40; background: rgba(0, 0, 0, 0.6); display: flex; align-items: flex-end; }
+.sheet { width: 100%; max-height: 85vh; overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 16px 16px 0 0; padding: 16px 16px 24px; }
+.who { margin-bottom: 12px; font-size: 14px; }
+.choice { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; border-radius: 12px; border: 1px solid var(--line); background: var(--panel-2); padding: 8px 12px; font-size: 14px; }
+.train-line { font-size: 14px; }
+.week { font-size: 14px; }
+.week th { background: var(--panel-2); color: var(--muted); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; text-align: left; padding: 8px 12px; }
+.week td { border-top: 1px solid var(--line); padding: 8px 12px; }
+.link { min-height: 44px; background: none; border: 0; padding: 0; font-weight: 600; text-align: left; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line); }
+.detail td { background: var(--panel-2); }
+.jobs { display: flex; flex-direction: column; gap: 4px; }
+.jobs li { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 420px) {
+  .spares { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn:active:not(:disabled) { transform: none; }
+}
+
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const Oe = {"operators":[{"name":"N Al Shammari","reg":true,"offline":false,"b1":true,"b2":true,"b3":true,"quals":{"36L":false,"36R":false,"39L":false,"39R":false,"40R":false,"41L":false,"41R":false,"44L":false,"45L":false,"45R":false,"46L":false,"46R":false,"47L":false,"47R":false,"48L":false,"48R":false,"37R":true,"54L":false,"54R":false,"55L":false},"training":{},"blocked":{}},{"name":"L. Smith","reg":true,"offline":false,"b1":true,"b2":true,"b3":true,"quals":{"36L":false,"36R":false,"39L":false,"39R":false,"40R":false,"41L":true,"41R":false,"44L":false,"45L":false,"45R":false,"46L":false,"46R":false,"47L":false,"47R":false,"48L":false,"48R":false,"37R":false,"54L":false,"54R":false,"55L":false},"training":{},"blocked":{}},{"name":"A. Bush","reg":true,"offline":false,"b1":false,"b2":false,"b3":false,"quals":{"36L":false,"36R":false,"39L":true,"39R":false,"40R":false,"41L":true,"41R":false,"44L":true,"45L":true,"45R":false,"46L":false,"46R":false,"47L":false,"47R":false,"48L":false,"48R":false,"37R":false,"54L":false,"54R":false,"55L":false},"training":{"39R":true,"37R":true,"36.5L":false,"36.5R":false},"blocked":{"39R":false}},{"name":"A. Cairnes","reg":true,"offline":false,"b1":false,"b2":false,"b3":false,"quals":{"36L":false,"36R":true,"39L":false,"39R":false,"40R":false,"41L":false,"41R":false,"44L":false,"45L":false,"45R":false,"46L":false,"46R":false,"47L":false,"47R":false,"48L":false,"48R":false,"37R":false,"54L":false,"54R":true,"55L":false},"training":{},"blocked":{"54L":false}},{"name":"B. Purvis","reg":true,"offline":false,"b1":false,"b2":false,"b3":false,"quals":{"36L":false,"36R":true,"39L":false,"39R":true,"40R":true,"41L":true,"41R":true,"44L":false,"45L":true,"45R":true,"46L":true,"46R":true,"47L":false,"47R":true,"48L":true,"48R":false,"37R":true,"54L":true,"54R":false,"55L":false},"training":{"36.5L":false,"36.5R":false},"blocked":{}},{"name":"C. Briggs","reg":true,"offline":false,"b1":false,"b2":false,"b3":false,"quals":{"36L":false,"36R":false,"39L":true,"39R":false,"40R":false,"41L":false,"41R":false,"44L":false,"45L":false,"45R":false,"46L":false,"46R":false,"47L":true,"47R":false,"48L":true,"48R":false,"37R":false,"54L":false,"54R":false,"55L":false},"training":{"46L":false},"blocked":{"46L":false}},{"name":"C. Hogg","reg":true,"offline":false,"b1":false,"b2":false,"b3":false,"quals":{"36L":false,"36R":false,"39L":false,"39R":false,"40R":false,"41L":true,"41R":false,"44L":false,"45L":false,"45R":true,"46L":false,"46R":false,"47L":false,"47R":false,"48L":false,"48R":false,"37R":false,"54L":false,"54R":false,"55L":true},"training":{"48L":true},"blocked":{}},{"name":"D. Lambert","reg":true,"offline":false,"b1":false,"b2":false,"b3":false,"quals":{"36L":false,"36R":false,"39L":false,"39R":true,"40R":true,"41L":true,"41R":true,"44L":false,"45L":true,"45R":true,"46L":true,"46R":false,"47L":false,"47R":true,"48L":false,"48R":false,"37R":false,"54L":false,"54R":false,"55L":false},"training":{"55L":true,"36.5L":false,"36.5R":false,"54L":false},"blocked":{"54L":false}},{"name":"D. Worrall","reg":true,"offline":false,"b1":false,"b2":false,"b3":false,"quals":{"36L":true,"36R":true,"39L":true,"39R":false,"40R":true,"41L":false,"41R":true,"44L":false,"45L":false,"45R":true,"46L":false,"46R":false,"47L":false,"47R":true,"48L":true,"48R":true,"37R":true,"54L":false,"54R":true,"55L":false},"training":{"46R":false,"36.5L":false,"36.5R":false},"blocked":{}},{"name":"E. boreland","reg":true,"offline":false,"b1":false,"b2":false,"b3":false,"quals":{"36L":false,"36R":false,"39L":false,"39R":true,"40R":true,"41L":false,"41R":false,"44L":false,"45L":false,"45R":false,"46L":true,"46R":false,"47L":false,"47R":false,"48L":false,"48R":false,"37R":false,"54L":false,"54R":false,"55L":false},"training":{"47R":false,"36R":true},"blocked":{}},{"name":"E. Tampil","reg":true,"offline":false,"b1":false,"b2":false,"b3":false,"quals":{"36L":true,"36R":false,"39L":false,"39R":false,"40R":false,"41L":false,"41R":false,"44L":false,"45L":false,"45R":true,"46L":false,"46R":true,"47L":false,"47R":true,"48L":false,"48R":true,"37R":false,"54L":false,"54R":false,"55L":false},"training":{"36.5L":false,"36.5R":false},"blocked":{}},{"name":"G. Cole","reg":true,"offline":false,"b1":false,"b2":false,"b3":false,"quals":{"36L":false,"36R":false,"39L":false,"39R":false,"40R":true,"41L":true,"41R":true,"44L":false,"45L":true,"45R":false,"46L":false,"46R":true,"47L":false,"47R":false,"48L":true,"48R":false,"37R":true,"54L":false,"54R":false,"55L":false},"training":{"44L":false},"blocked":{"44L":true}},{"name":"J. Hadlington","reg":true,"offline":false,"b1":false,"b2":false,"b3":false,"quals":{"36L":false,"36R":true,"39L":false,"39R":false,"40R":false,"41L":false,"41R":false,"44L":true,"45L":true,"45R":false,"46L":true,"46R":false,"47L":true,"47R":false,"48L":true,"48R":true,"37R":false,"54L":false,"54R":false,"55L":false},"training":{"36.5L":false,"36.5R":false},"blocked":{}},{"name":"K. Jaskolski","reg":true,"offline":false,"b1":false,"b2":false,"b3":false,"quals":{"36L":true,"36R":false,"39L":false,"39R":true,"40R":false,"41L":true,"41R":false,"44L":false,"45L":false,"45R":false,"46L":false,"46R":false,"47L":false,"47R":false,"48L":false,"48R":true,"37R":false,"54L":false,"54R":false,"55L":false},"training":{},"blocked":{}},{"name":"K. Mitchell","reg":true,"offline":false,"b1":false,"b2":false,"b3":false,"quals":{"36L":false,"36R":false,"39L":false,"39R":true,"40R":false,"41L":false,"41R":true,"44L":true,"45L":false,"45R":false,"46L":false,"46R":false,"47L":false,"47R":false,"48L":false,"48R":false,"37R":false,"54L":false,"54R":true,"55L":false},"training":{"37R":true,"39L":true,"36.5L":false,"36.5R":false},"blocked":{}},{"name":"M. Bough","reg":true,"offline":false,"b1":false,"b2":false,"b3":false,"quals":{"36L":true,"36R":false,"39L":false,"39R":false,"40R":false,"41L":true,"41R":false,"44L":false,"45L":true,"45R":false,"46L":false,"46R":false,"47L":false,"47R":false,"48L":false,"48R":false,"37R":false,"54L":false,"54R":false,"55L":false},"training":{"47R":false,"55L":true},"blocked":{}},{"name":"N. Anele","reg":true,"offline":false,"b1":false,"b2":false,"b3":false,"quals":{"36L":false,"36R":false,"39L":false,"39R":false,"40R":false,"41L":false,"41R":false,"44L":false,"45L":false,"45R":false,"46L":false,"46R":false,"47L":false,"47R":false,"48L":false,"48R":false,"37R":false,"54L":true,"54R":false,"55L":false},"training":{"36L":false},"blocked":{"36L":true}},{"name":"O. Roper","reg":true,"offline":false,"b1":false,"b2":false,"b3":false,"quals":{"36L":false,"36R":true,"39L":false,"39R":false,"40R":false,"41L":false,"41R":false,"44L":false,"45L":false,"45R":false,"46L":false,"46R":false,"47L":true,"47R":false,"48L":false,"48R":false,"37R":false,"54L":false,"54R":false,"55L":false},"training":{"54R":false,"55L":false,"45L":true},"blocked":{"55L":false,"45L":false}},{"name":"R. Green","reg":true,"offline":false,"b1":false,"b2":false,"b3":false,"quals":{"36L":false,"36R":false,"39L":false,"39R":false,"40R":false,"41L":false,"41R":false,"44L":true,"45L":false,"45R":false,"46L":true,"46R":false,"47L":true,"47R":false,"48L":true,"48R":false,"37R":false,"54L":false,"54R":false,"55L":false},"training":{"36.5L":false,"36.5R":false},"blocked":{}},{"name":"S. Holmes","reg":true,"offline":false,"b1":false,"b2":false,"b3":false,"quals":{"36L":false,"36R":false,"39L":false,"39R":false,"40R":false,"41L":false,"41R":false,"44L":false,"45L":false,"45R":false,"46L":false,"46R":false,"47L":false,"47R":false,"48L":false,"48R":false,"37R":false,"54L":false,"54R":false,"55L":true},"training":{"54R":true,"54L":true},"blocked":{}},{"name":"S. Humphrey","reg":true,"offline":false,"b1":false,"b2":false,"b3":false,"quals":{"36L":false,"36R":false,"39L":false,"39R":false,"40R":false,"41L":false,"41R":false,"44L":false,"45L":false,"45R":false,"46L":true,"46R":true,"47L":false,"47R":false,"48L":false,"48R":false,"37R":false,"54L":false,"54R":false,"55L":false},"training":{"40R":false,"54L":false},"blocked":{"40R":false,"54L":false}},{"name":"S. Spurr","reg":true,"offline":false,"b1":false,"b2":false,"b3":false,"quals":{"36L":false,"36R":false,"39L":true,"39R":false,"40R":false,"41L":false,"41R":true,"44L":false,"45L":false,"45R":false,"46L":false,"46R":false,"47L":false,"47R":true,"48L":false,"48R":false,"37R":false,"54L":false,"54R":false,"55L":false},"training":{"54R":true},"blocked":{}},{"name":"M. Olorunlowu","reg":true,"offline":false,"b1":false,"b2":false,"b3":false,"quals":{"36L":false,"36R":false,"39L":false,"39R":false,"40R":false,"41L":false,"41R":false,"44L":false,"45L":false,"45R":false,"46L":false,"46R":false,"47L":false,"47R":true,"48L":false,"48R":false,"37R":false,"54L":false,"54R":false,"55L":false},"training":{"54L":true},"blocked":{}},{"name":"G. Moran","reg":true,"offline":false,"b1":false,"b2":false,"b3":false,"quals":{"36L":false,"36R":false,"39L":true,"39R":false,"40R":false,"41L":false,"41R":false,"44L":false,"45L":false,"45R":false,"46L":false,"46R":false,"47L":false,"47R":false,"48L":false,"48R":false,"37R":false,"54L":false,"54R":false,"55L":false},"training":{"47L":true,"36L":false},"blocked":{}}],"stations":["36L","36R","39L","39R","40R","41L","41R","44L","45L","45R","46L","46R","47L","47R","48L","48R","37R","54L","54R","55L"],"weekHistory":{"2026-08-21":{"result":{"36L":{"1":"K. Jaskolski","2":"M. Bough","3":"E. Tampil"},"36R":{"1":"J. Hadlington","2":"O. Roper","3":"O. Roper"},"39L":{"1":"G. Moran","2":"S. Spurr","3":"G. Moran"},"39R":{"1":"E. boreland","2":"K. Mitchell","3":"K. Jaskolski"},"40R":{"1":"D. Worrall","2":"E. boreland","3":"D. Lambert"},"41L":{"1":"M. Bough","2":"C. Hogg","3":"A. Bush"},"41R":{"1":"K. Mitchell","2":"D. Worrall","3":"S. Spurr"},"44L":{"1":"A. Bush","2":"R. Green","3":"K. Mitchell"},"45L":{"1":"D. Lambert","2":"A. Bush","3":"M. Bough"},"45R":{"1":"C. Hogg","2":"D. Lambert","3":"C. Hogg"},"46L":{"1":"R. Green","2":"S. Humphrey","3":"E. boreland"},"46R":{"1":"S. Humphrey","2":"E. Tampil","3":"S. Humphrey"},"47L":{"1":"O. Roper","2":"C. Briggs","3":"R. Green"},"47R":{"1":"S. Spurr","2":"M. Olorunlowu","3":"M. Olorunlowu"},"48L":{"1":"C. Briggs","2":"J. Hadlington","3":"C. Briggs"},"48R":{"1":"E. Tampil","2":"K. Jaskolski","3":"J. Hadlington"},"37R":{"1":"B. Purvis","2":"G. Cole","3":"D. Worrall"},"54L":{"1":"N. Anele","2":"N. Anele","3":"B. Purvis"},"54R":{"1":"A. Cairnes","2":"A. Cairnes","3":"A. Cairnes"},"55L":{"1":"S. Holmes","2":"S. Holmes","3":"S. Holmes"}},"stations":["36L","36R","39L","39R","40R","41L","41R","44L","45L","45R","46L","46R","47L","47R","48L","48R","37R","54L","54R","55L"],"confirmedAt":"2026-08-21T18:37:34.117Z"},"2026-08-25":{"result":{"36L":{"1":"K. Jaskolski","2":"M. Bough","3":"E. Tampil"},"36R":{"1":"O. Roper","2":"O. Roper","3":"J. Hadlington"},"39L":{"1":"G. Moran","2":"G. Moran","3":"C. Briggs"},"39R":{"1":"E. boreland","2":"K. Jaskolski","3":"K. Mitchell"},"40R":{"1":"D. Worrall","2":"E. boreland","3":"D. Lambert"},"41L":{"1":"M. Bough","2":"A. Bush","3":"C. Hogg"},"41R":{"1":"S. Spurr","2":"K. Mitchell","3":"S. Spurr"},"44L":{"1":"K. Mitchell","2":"R. Green","3":"A. Bush"},"45L":{"1":"A. Bush","2":"D. Lambert","3":"M. Bough"},"45R":{"1":"E. Tampil","2":"C. Hogg","3":"D. Worrall"},"46L":{"1":"D. Lambert","2":"S. Humphrey","3":"E. boreland"},"46R":{"1":"S. Humphrey","2":"B. Purvis","3":"S. Humphrey"},"47L":{"1":"R. Green","2":"C. Briggs","3":"O. Roper"},"47R":{"1":"M. Olorunlowu","2":"S. Spurr","3":"M. Olorunlowu"},"48L":{"1":"C. Briggs","2":"J. Hadlington","3":"R. Green"},"48R":{"1":"J. Hadlington","2":"E. Tampil","3":"K. Jaskolski"},"37R":{"1":"B. Purvis","2":"D. Worrall","3":"B. Purvis"},"54L":{"1":"N. Anele","2":"N. Anele","3":"N. Anele"},"54R":{"1":"A. Cairnes","2":"A. Cairnes","3":"A. Cairnes"},"55L":{"1":"C. Hogg","2":"S. Holmes","3":"S. Holmes"}},"stations":["36L","36R","39L","39R","40R","41L","41R","44L","45L","45R","46L","46R","47L","47R","48L","48R","37R","54L","54R","55L"],"confirmedAt":"2026-08-25T09:21:38.556Z"}},"weekArchive":{"2026-08-16_to_2026-08-22":{"weekHistory":{"2026-08-17":{"result":{"36L":{"1":"K. Jaskolski","2":"E. Tampil","3":"K. Jaskolski"},"36R":{"1":"O. Roper","2":"J. Hadlington","3":"O. Roper"},"39L":{"1":"G. Moran","2":"G. Moran","3":"G. Moran"},"39R":{"1":"K. Mitchell","2":"K. Mitchell","3":"E. boreland"},"40R":{"1":"S. Humphrey","2":"E. boreland","3":"D. Lambert"},"41L":{"1":"A. Bush","2":"C. Hogg","3":"C. Hogg"},"41R":{"1":"S. Spurr","2":"S. Spurr","3":"S. Spurr"},"44L":{"1":"R. Green","2":"A. Bush","3":"K. Mitchell"},"45L":{"1":"D. Lambert","2":"B. Purvis","3":"A. Bush"},"45R":{"1":"C. Hogg","2":"D. Lambert","3":"D. Worrall"},"46L":{"1":"E. boreland","2":"R. Green","3":"S. Humphrey"},"46R":{"1":"D. Worrall","2":"S. Humphrey","3":"E. Tampil"},"47L":{"1":"C. Briggs","2":"O. Roper","3":"C. Briggs"},"47R":{"1":"M. Olorunlowu","2":"M. Olorunlowu","3":"M. Olorunlowu"},"48L":{"1":"J. Hadlington","2":"C. Briggs","3":"R. Green"},"48R":{"1":"E. Tampil","2":"K. Jaskolski","3":"J. Hadlington"},"37R":{"1":"B. Purvis","2":"D. Worrall","3":"B. Purvis"},"54L":{"1":"N. Anele","2":"N. Anele","3":"N. Anele"},"54R":{"1":"A. Cairnes","2":"A. Cairnes","3":"A. Cairnes"},"55L":{"1":"S. Holmes","2":"S. Holmes","3":"S. Holmes"}},"stations":["36L","36R","39L","39R","40R","41L","41R","44L","45L","45R","46L","46R","47L","47R","48L","48R","37R","54L","54R","55L"],"confirmedAt":"2026-08-17T19:03:26.158Z"},"2026-08-18":{"result":{"36L":{"1":"E. Tampil","2":"K. Jaskolski","3":"E. Tampil"},"36R":{"1":"J. Hadlington","2":"O. Roper","3":"O. Roper"},"39L":{"1":"G. Moran","2":"G. Moran","3":"G. Moran"},"39R":{"1":"K. Mitchell","2":"E. boreland","3":"K. Mitchell"},"40R":{"1":"D. Lambert","2":"S. Humphrey","3":"E. boreland"},"41L":{"1":"A. Bush","2":"C. Hogg","3":"A. Bush"},"41R":{"1":"S. Spurr","2":"S. Spurr","3":"S. Spurr"},"44L":{"1":"R. Green","2":"K. Mitchell","3":"J. Hadlington"},"45L":{"1":"B. Purvis","2":"A. Bush","3":"D. Lambert"},"45R":{"1":"C. Hogg","2":"D. Lambert","3":"C. Hogg"},"46L":{"1":"E. boreland","2":"J. Hadlington","3":"S. Humphrey"},"46R":{"1":"S. Humphrey","2":"E. Tampil","3":"B. Purvis"},"47L":{"1":"O. Roper","2":"C. Briggs","3":"R. Green"},"47R":{"1":"M. Olorunlowu","2":"M. Olorunlowu","3":"M. Olorunlowu"},"48L":{"1":"C. Briggs","2":"R. Green","3":"C. Briggs"},"48R":{"1":"K. Jaskolski","2":"D. Worrall","3":"K. Jaskolski"},"37R":{"1":"D. Worrall","2":"B. Purvis","3":"D. Worrall"},"54L":{"1":"N. Anele","2":"N. Anele","3":"N. Anele"},"54R":{"1":"A. Cairnes","2":"A. Cairnes","3":"A. Cairnes"},"55L":{"1":"S. Holmes","2":"S. Holmes","3":"S. Holmes"}},"stations":["36L","36R","39L","39R","40R","41L","41R","44L","45L","45R","46L","46R","47L","47R","48L","48R","37R","54L","54R","55L"],"confirmedAt":"2026-08-19T17:39:54.038Z"},"2026-08-19":{"result":{"36L":{"1":"K. Jaskolski","2":"E. Tampil","3":"K. Jaskolski"},"36R":{"1":"J. Hadlington","2":"O. Roper","3":"O. Roper"},"39L":{"1":"G. Moran","2":"G. Moran","3":"G. Moran"},"39R":{"1":"K. Mitchell","2":"K. Jaskolski","3":"K. Mitchell"},"40R":{"1":"D. Lambert","2":"E. boreland","3":"S. Humphrey"},"41L":{"1":"C. Hogg","2":"A. Bush","3":"C. Hogg"},"41R":{"1":"S. Spurr","2":"S. Spurr","3":"S. Spurr"},"44L":{"1":"R. Green","2":"K. Mitchell","3":"A. Bush"},"45L":{"1":"A. Bush","2":"D. Lambert","3":"J. Hadlington"},"45R":{"1":"B. Purvis","2":"C. Hogg","3":"D. Lambert"},"46L":{"1":"E. boreland","2":"J. Hadlington","3":"E. boreland"},"46R":{"1":"S. Humphrey","2":"S. Humphrey","3":"B. Purvis"},"47L":{"1":"O. Roper","2":"C. Briggs","3":"R. Green"},"47R":{"1":"M. Olorunlowu","2":"M. Olorunlowu","3":"M. Olorunlowu"},"48L":{"1":"C. Briggs","2":"R. Green","3":"C. Briggs"},"48R":{"1":"E. Tampil","2":"D. Worrall","3":"E. Tampil"},"37R":{"1":"D. Worrall","2":"B. Purvis","3":"D. Worrall"},"54L":{"1":"N. Anele","2":"N. Anele","3":"N. Anele"},"54R":{"1":"A. Cairnes","2":"A. Cairnes","3":"A. Cairnes"},"55L":{"1":"S. Holmes","2":"S. Holmes","3":"S. Holmes"}},"stations":["36L","36R","39L","39R","40R","41L","41R","44L","45L","45R","46L","46R","47L","47R","48L","48R","37R","54L","54R","55L"],"confirmedAt":"2026-08-17T19:04:19.670Z"},"2026-08-20":{"result":{"36L":{"1":"D. Worrall","2":"E. Tampil","3":"K. Jaskolski"},"36R":{"1":"J. Hadlington","2":"O. Roper","3":"D. Worrall"},"39L":{"1":"G. Moran","2":"G. Moran","3":"G. Moran"},"39R":{"1":"E. boreland","2":"K. Jaskolski","3":"K. Mitchell"},"40R":{"1":"S. Humphrey","2":"D. Lambert","3":"E. boreland"},"41L":{"1":"C. Hogg","2":"A. Bush","3":"C. Hogg"},"41R":{"1":"S. Spurr","2":"S. Spurr","3":"S. Spurr"},"44L":{"1":"K. Mitchell","2":"K. Mitchell","3":"R. Green"},"45L":{"1":"A. Bush","2":"B. Purvis","3":"A. Bush"},"45R":{"1":"D. Lambert","2":"C. Hogg","3":"D. Lambert"},"46L":{"1":"R. Green","2":"E. boreland","3":"J. Hadlington"},"46R":{"1":"E. Tampil","2":"S. Humphrey","3":"S. Humphrey"},"47L":{"1":"O. Roper","2":"C. Briggs","3":"O. Roper"},"47R":{"1":"M. Olorunlowu","2":"M. Olorunlowu","3":"M. Olorunlowu"},"48L":{"1":"C. Briggs","2":"R. Green","3":"C. Briggs"},"48R":{"1":"K. Jaskolski","2":"J. Hadlington","3":"E. Tampil"},"37R":{"1":"B. Purvis","2":"D. Worrall","3":"B. Purvis"},"54L":{"1":"N. Anele","2":"N. Anele","3":"N. Anele"},"54R":{"1":"A. Cairnes","2":"A. Cairnes","3":"A. Cairnes"},"55L":{"1":"S. Holmes","2":"S. Holmes","3":"S. Holmes"}},"stations":["36L","36R","39L","39R","40R","41L","41R","44L","45L","45R","46L","46R","47L","47R","48L","48R","37R","54L","54R","55L"],"confirmedAt":"2026-08-20T18:50:15.309Z"},"2026-08-21":{"result":{"36L":{"1":"K. Jaskolski","2":"E. Tampil","3":"K. Jaskolski"},"36R":{"1":"O. Roper","2":"J. Hadlington","3":"O. Roper"},"39L":{"1":"G. Moran","2":"G. Moran","3":"G. Moran"},"39R":{"1":"E. boreland","2":"K. Mitchell","3":"D. Lambert"},"40R":{"1":"S. Humphrey","2":"E. boreland","3":"D. Worrall"},"41L":{"1":"A. Bush","2":"C. Hogg","3":"A. Bush"},"41R":{"1":"S. Spurr","2":"S. Spurr","3":"S. Spurr"},"44L":{"1":"K. Mitchell","2":"R. Green","3":"K. Mitchell"},"45L":{"1":"D. Lambert","2":"A. Bush","3":"J. Hadlington"},"45R":{"1":"C. Hogg","2":"D. Lambert","3":"C. Hogg"},"46L":{"1":"R. Green","2":"S. Humphrey","3":"E. boreland"},"46R":{"1":"E. Tampil","2":"B. Purvis","3":"S. Humphrey"},"47L":{"1":"C. Briggs","2":"O. Roper","3":"C. Briggs"},"47R":{"1":"M. Olorunlowu","2":"M. Olorunlowu","3":"M. Olorunlowu"},"48L":{"1":"J. Hadlington","2":"C. Briggs","3":"R. Green"},"48R":{"1":"D. Worrall","2":"K. Jaskolski","3":"E. Tampil"},"37R":{"1":"B. Purvis","2":"D. Worrall","3":"B. Purvis"},"54L":{"1":"N. Anele","2":"N. Anele","3":"N. Anele"},"54R":{"1":"A. Cairnes","2":"A. Cairnes","3":"A. Cairnes"},"55L":{"1":"S. Holmes","2":"S. Holmes","3":"S. Holmes"}},"stations":["36L","36R","39L","39R","40R","41L","41R","44L","45L","45R","46L","46R","47L","47R","48L","48R","37R","54L","54R","55L"],"confirmedAt":"2026-08-17T19:05:36.737Z"}},"archivedAt":"2026-08-20T18:57:50.423Z"}},"customLabels":{},"dismissedSuggestions":{},"avoidYesterdayEnabled":false};
+var S = [`mon`, `tue`, `wed`, `thu`, `fri`];
+
+function C(e) {
+    return e && typeof e == `object` && !Array.isArray(e) ? e : null
+}
+
+function w(e) {
+    let t = C(e);
+    if (!t) return {};
+    let n = {};
+    for (let [e, r] of Object.entries(t)) n[e] = r === !0;
+    return n
+}
+
+function T(e) {
+    if (!Array.isArray(e)) return [];
+    let t = [];
+    for (let n of e) {
+        let e = C(n);
+        if (!e) continue;
+        let r = String(e.operator ?? ``).trim(),
+            i = String(e.station ?? ``).trim(),
+            a = (Array.isArray(e.shifts) ? e.shifts : []).map(e => Number(e)).filter(e => e === 1 || e === 2 || e === 3);
+        r && i && a.length !== 0 && t.push({
+            operator: r,
+            station: i,
+            shifts: [...new Set(a)]
+        })
+    }
+    return t
+}
+
+function E(e) {
+    let t = C(structuredClone(e)) ?? {},
+        n = (Array.isArray(t.stations) ? t.stations : []).map(e => String(e).trim()).filter(Boolean),
+        r = [];
+    if (Array.isArray(t.operators))
+        for (let e of t.operators) {
+            let t = C(e);
+            if (!t) continue;
+            let i = w(t.quals),
+                a = w(t.training),
+                o = w(t.blocked);
+            for (let e of n) e in i || (i[e] = !1);
+            for (let e of Object.keys(o)) o[e] && (i[e] = !0);
+            let s = Number(t.trainSessions),
+                c = s === 1 || s === 2 || s === 3 ? s : 0;
+            r.push({
+                name: String(t.name ?? ``).trim() || `Operator`,
+                reg: t.reg === !0,
+                offline: t.offline === !0,
+                b1: t.b1 === !0,
+                b2: t.b2 === !0,
+                b3: t.b3 === !0,
+                trainSessions: c,
+                quals: i,
+                training: a,
+                blocked: o
+            })
+        }
+    let i = C(t.weekHistory),
+        a = C(t.weekArchive);
+    return {
+        operators: r,
+        stations: n,
+        weekHistory: i ?? {},
+        weekArchive: a ?? {},
+        pins: T(t.pins),
+        avoidYesterdayEnabled: t.avoidYesterdayEnabled !== !1,
+        customLabels: C(t.customLabels) ?? {},
+        dismissedSuggestions: C(t.dismissedSuggestions) ?? {},
+        selectedDay: S.includes(t.selectedDay) ? t.selectedDay : M(),
+        dayPlans: F(t.dayPlans)
+    }
+}
+
+function D(e, t) {
+    return e && e[String(t)] || null
+}
+
+function O(e) {
+    return e?.quals ? Object.values(e.quals).filter(Boolean).length : 0
+}
+
+function k(e, t) {
+    return e ? t === 1 ? !!e.b1 : t === 2 ? !!e.b2 : !!e.b3 : !1
+}
+
+function A(e, t) {
+    return !!(e && e.quals && e.quals[t] && !(e.blocked && e.blocked[t]))
+}
+
+function j(e, t) {
+    return e.blocked?.[t] ? `blocked` : e.quals?.[t] ? `qualified` : e.training?.[t] ? `training` : `empty`
+}
+
+function ee(e, t) {
+    e.blocked[t] ? (e.blocked[t] = !1, e.quals[t] = !1) : e.quals[t] ? e.blocked[t] = !0 : e.training[t] ? (e.training[t] = !1, e.quals[t] = !0) : e.training[t] = !0
+}
+
+function M(e = new Date) {
+    let t = e.getDay();
+    return t >= 1 && t <= 5 ? S[t - 1] : `mon`
+}
+
+function N(e) {
+    return {
+        mon: `Monday`,
+        tue: `Tuesday`,
+        wed: `Wednesday`,
+        thu: `Thursday`,
+        fri: `Friday`
+    } [e]
+}
+
+function P(e) {
+    let t = C(e);
+    if (!t || !C(t.result) || !Array.isArray(t.stations)) return null;
+    let n = t.stations.map(e => String(e).trim()).filter(Boolean),
+        r = C(t.result),
+        i = Array.isArray(t.training) ? t.training.flatMap(e => {
+            let t = C(e);
+            if (!t) return [];
+            let n = Number(t.shift);
+            return n !== 1 && n !== 2 && n !== 3 ? [] : [{
+                name: String(t.name ?? ``),
+                station: String(t.station ?? ``),
+                shift: n
+            }]
+        }) : void 0;
+    return {
+        result: r,
+        stations: n,
+        score: typeof t.score == `number` ? t.score : 0,
+        training: i,
+        trainingKey: typeof t.trainingKey == `string` ? t.trainingKey : void 0,
+        trainingWarning: typeof t.trainingWarning == `string` ? t.trainingWarning : void 0
+    }
+}
+
+function F(e) {
+    let t = C(e) ?? {},
+        n = {};
+    for (let e of S) {
+        let r = C(t[e]);
+        if (!r) continue;
+        let i = {},
+            a = C(r.people) ?? {};
+        for (let [e, t] of Object.entries(a)) {
+            let n = C(t);
+            if (!n) continue;
+            let r = Number(n.trainSessions);
+            i[e] = {
+                reg: n.reg === !0,
+                offline: n.offline === !0,
+                b1: n.b1 === !0,
+                b2: n.b2 === !0,
+                b3: n.b3 === !0,
+                trainSessions: r === 1 || r === 2 || r === 3 ? r : 0
+            }
+        }
+        n[e] = {
+            people: i,
+            pins: T(r.pins),
+            board: P(r.board)
+        }
+    }
+    return n
+}
+
+function I(e) {
+    return `${e.getFullYear()}-${String(e.getMonth()+1).padStart(2,`0`)}-${String(e.getDate()).padStart(2,`0`)}`
+}
+
+function L(e) {
+    let t = new Date(e.getFullYear(), e.getMonth(), e.getDate()),
+        n = t.getDay();
+    return t.setDate(t.getDate() + (n === 0 ? -6 : 1 - n)), t
+}
+
+function te(e = new Date) {
+    let t = L(e);
+    return Array.from({
+        length: 7
+    }, (e, n) => {
+        let r = new Date(t);
+        return r.setDate(t.getDate() + n), I(r)
+    })
+}
+
+function ne(e) {
+    let [t, n, r] = e.split(`-`).map(Number);
+    return !t || !n || !r ? e : new Date(t, n - 1, r).toLocaleDateString(`en-GB`, {
+        weekday: `short`,
+        day: `numeric`,
+        month: `short`
+    })
+}
+
+function R(e, t = new Date) {
+    let n = new Set(te(t)),
+        r = {};
+    for (let t of Object.keys(e.weekHistory)) {
+        if (!n.has(t)) continue;
+        let i = e.weekHistory[t];
+        if (i?.stations && i.result)
+            for (let e of i.stations)
+                for (let t of [1, 2, 3]) {
+                    let n = D(i.result[e], t);
+                    n && (r[n] || (r[n] = []), r[n].includes(e) || r[n].push(e))
+                }
+    }
+    return r
+}
+
+function re(e) {
+    let t = {},
+        n = {},
+        r = [];
+    for (let i of S) {
+        let a = e.dayPlans?.[i]?.board;
+        if (!a?.result) continue;
+        let o = !1;
+        for (let e of a.stations)
+            for (let r of [1, 2, 3]) {
+                let i = D(a.result[e], r);
+                i && (o = !0, t[i] || (t[i] = []), t[i].includes(e) || t[i].push(e), n[i] || (n[i] = {}), n[i][e] = (n[i][e] || 0) + 1)
+            }
+        o && r.push(i)
+    }
+    return {
+        worked: t,
+        counts: n,
+        solved: r
+    }
+}
+
+function ie(e, t = new Date) {
+    let n = R(e, t),
+        r = S.indexOf(e.selectedDay ?? `mon`);
+    for (let t = 0; t < r; t++) {
+        let r = e.dayPlans?.[S[t]]?.board;
+        if (r?.result)
+            for (let e of r.stations)
+                for (let t of [1, 2, 3]) {
+                    let i = D(r.result[e], t);
+                    i && (n[i] || (n[i] = []), n[i].includes(e) || n[i].push(e))
+                }
+    }
+    return n
+}
+
+function ae(e) {
+    let t = S.indexOf(e.selectedDay ?? `mon`),
+        n = t > 0 ? e.dayPlans?.[S[t - 1]]?.board : null;
+    if (!n?.result) return z(e);
+    let r = {};
+    for (let e of n.stations)
+        for (let t of [1, 2, 3]) {
+            let i = D(n.result[e], t);
+            i && (r[i] || (r[i] = {}), r[i][e] = String(t))
+        }
+    return r
+}
+
+function z(e) {
+    let t = null,
+        n = null;
+    for (let r of Object.keys(e.weekHistory))(!t || r > t) && (t = r, n = e.weekHistory[r]);
+    if (!n?.stations || !n.result) return null;
+    let r = {};
+    for (let e of n.stations)
+        for (let t of [1, 2, 3]) {
+            let i = D(n.result[e], t);
+            i && (r[i] || (r[i] = {}), r[i][e] = String(t))
+        }
+    return r
+}
+
+function oe(e, t = new Date) {
+    let n = te(t),
+        r = new Set(n),
+        i = {};
+    for (let t of Object.keys(e.weekHistory)) r.has(t) && (i[t] = e.weekHistory[t]);
+    if (Object.keys(i).length === 0) return !1;
+    let a = `${n[0]}_to_${n[6]}`;
+    e.weekArchive[a] || (e.weekArchive[a] = {
+        weekHistory: {},
+        archivedAt: new Date().toISOString()
+    }), Object.assign(e.weekArchive[a].weekHistory, i);
+    for (let t of Object.keys(i)) delete e.weekHistory[t];
+    return !0
+}
+
+function se(e) {
+    let t = e.stations.map(t => {
+        let n = e.operators.filter(e => e.quals?.[t]).length,
+            r = e.operators.filter(e => e.reg && !e.offline && A(e, t)),
+            i = r.length,
+            a = i === 0 ? `none` : i === 1 ? `critical` : i <= 3 ? `tight` : `ok`;
+        return {
+            station: t,
+            active: i,
+            total: n,
+            names: r.map(e => e.name),
+            risk: a
+        }
+    });
+    return t.sort((e, t) => e.active - t.active || e.station.localeCompare(t.station)), t
+}
+
+function ce(e) {
+    return e.operators.filter(e => e.reg && !e.offline)
+}
+var B = e => String(e ?? ``).trim().toUpperCase() === `Y`;
+
+function le(e) {
+    let t = e.split(/\r?\n/).filter(e => e.trim()).map(e => e.split(`	`));
+    if (t.length < 2) throw Error(`Paste the header row and at least one operator.`);
+    let n = t[0].map(e => String(e ?? ``).trim()),
+        r = n.findIndex(e => e.toLowerCase() === `name`);
+    if (r < 0) throw Error(`Need a Name column.`);
+    let i = e => n.findIndex(t => t.toLowerCase() === e),
+        a = i(`reg`),
+        o = i(`offline`),
+        s = i(`1st`),
+        c = i(`2nd`),
+        l = i(`3rd`),
+        u = new Set([r, a, o, s, c, l].filter(e => e >= 0)),
+        d = [];
+    if (n.forEach((e, t) => {
+            !u.has(t) && e && e.toLowerCase() !== `skills` && d.push({
+                i: t,
+                code: e
+            })
+        }), d.length === 0) throw Error(`No station columns found.`);
+    let f = [];
+    for (let e = 1; e < t.length; e++) {
+        let n = String(t[e][r] ?? ``).trim();
+        if (!n) continue;
+        let i = {};
+        for (let n of d) i[n.code] = B(t[e][n.i]);
+        f.push({
+            name: n,
+            reg: a >= 0 ? B(t[e][a]) : !0,
+            offline: o >= 0 && B(t[e][o]),
+            b1: s >= 0 && B(t[e][s]),
+            b2: c >= 0 && B(t[e][c]),
+            b3: l >= 0 && B(t[e][l]),
+            quals: i,
+            blocked: {},
+            training: {},
+            trainSessions: 0
+        })
+    }
+    if (f.length === 0) throw Error(`No operator rows found.`);
+    return {
+        operators: f,
+        stations: d.map(e => e.code)
+    }
+}
+
+function ue(e, t) {
+    return e.map(e => [1, 2, 3].map(n => D(t[e], n) || ``).join(`	`)).join(`
+`)
+}
+
+function de(e, t, n) {
+    let r = [`Rotation`];
+    for (let n of e) {
+        let e = [1, 2, 3].map(e => D(t[n], e) || `—`);
+        r.push(`${n}  ${e.join(`  ·  `)}`)
+    }
+    r.push(`Spares`);
+    for (let e of [1, 2, 3]) r.push(`S${e}: ${n[e].length?n[e].join(`, `):`none`}`);
+    return r.join(`
+`)
+}
+
+function fe(e, t, n, r, i) {
+    let a = structuredClone(e);
+    for (let e of t) a[e] || (a[e] = {});
+    let o = String(r),
+        s = D(a[n], r);
+    if (i === s) return a;
+    if (i) {
+        let e = !1;
+        for (let c of t) c !== n && D(a[c], r) === i && (a[c][o] = e ? null : s, e = !0)
+    }
+    return a[n][o] = i, a
+}
+
+function pe(e, t, n, r) {
+    for (let i of e.pins) i.station === n && i.operator !== t && (i.shifts = i.shifts.filter(e => e !== r));
+    e.pins = e.pins.filter(e => e.shifts.length > 0);
+    let i = e.pins.find(e => e.operator === t && e.station === n);
+    i ? (i.shifts.includes(r) || i.shifts.push(r), i.shifts.sort((e, t) => e - t)) : e.pins.push({
+        operator: t,
+        station: n,
+        shifts: [r]
+    })
+}
+
+function me(e, t, n, r, i, a) {
+    let o = fe(t, n, r, i, a);
+    return V(e, o, n, i), a && pe(e, a, r, i), o
+}
+
+function V(e, t, n, r) {
+    let i = !1;
+    for (let a of e.pins) n.includes(a.station) && a.shifts.includes(r) && D(t[a.station], r) !== a.operator && (a.shifts = a.shifts.filter(e => e !== r), i = !0);
+    return i && (e.pins = e.pins.filter(e => e.shifts.length > 0)), i
+}
+
+function H(e) {
+    return e.toLowerCase().replace(/[.\s]+/g, ``)
+}
+
+function he(e) {
+    let t = e.trim();
+    return t ? t.includes(`·`) ? t.split(`·`).map(e => e.trim()) : t.includes(`	`) ? t.split(`	`).map(e => e.trim()) : (t.match(/,/g) || []).length >= 2 ? t.split(`,`).map(e => e.trim()) : [t] : []
+}
+var ge = /^(stn|station|stations|s[123]|shift\s*[123]|1st|2nd|3rd|name|names)$/i;
+
+function U(e, t) {
+    let n = e.trim().replace(/\s+\*$/, ``);
+    if (!n || n === `—` || n === `-` || n === `–` || /^n\/?a$/i.test(n)) return {
+        name: null,
+        unknown: !1
+    };
+    let r = H(n),
+        i = t.find(e => H(e.name) === r);
+    return i ? {
+        name: i.name,
+        unknown: !1
+    } : {
+        name: n,
+        unknown: !0
+    }
+}
+
+function W(e, t) {
+    let n = H(e);
+    return t.find(e => H(e) === n) ?? null
+}
+
+function G(e, t) {
+    let n = [...t].sort((e, t) => t.length - e.length);
+    for (let r of n) {
+        let n = new RegExp("^" + r.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s+", "i");
+        if (!n.test(e)) continue;
+        let i = W(r, t),
+            a = e.replace(n, "").trim();
+        if (i && a) return {
+            station: i,
+            rest: a
+        };
+    }
+    return null;
+}
+
+function _e(e, t, n, r) {
+    let i = r.split(/\r?\n/).map(he).filter(e => e.some(e => e.trim())).filter(t => {
+        let n = t.map(e => e.trim()).filter(Boolean);
+        if (n.length === 0) return !1;
+        let r = n.filter(e => ge.test(e)).length,
+            i = n.filter(t => e.operators.some(e => H(e.name) === H(t.replace(/\s+\*$/, ``)))).length;
+        return !(r > 0 && i === 0)
+    });
+    if (i.length === 0) throw Error(`No names in that paste.`);
+    let a = e => {
+            let t = (e[0] || ``).trim();
+            return W(t, n) ?? G(t, n)?.station ?? null
+        },
+        o = i.filter(e => a(e)),
+        s = o.length > 0 ? o : i,
+        c = [],
+        l = 0;
+    for (let t of s) {
+        let r = t.slice(),
+            i = W(r[0] || ``, n);
+        if (i) r = r.slice(1);
+        else {
+            let e = G(r[0] || ``, n);
+            e && (i = e.station, r = [e.rest, ...r.slice(1)])
+        }
+        if (!i) {
+            if (l >= n.length) continue;
+            i = n[l], l += 1
+        }
+        r.slice(0, 3).forEach((t, n) => {
+            let r = U(t, e.operators);
+            c.push({
+                station: i,
+                shift: n + 1,
+                name: r.name,
+                unknown: r.unknown
+            })
+        })
+    }
+    if (!c.some(e => e.name)) throw Error(`No names in that paste.`);
+    let u = new Map;
+    c.forEach((e, t) => {
+        if (!e.name) return;
+        let n = `${H(e.name)}|${e.shift}`,
+            r = u.get(n);
+        r !== void 0 && (c[r].name = null, c[r].unknown = !1), u.set(n, t)
+    });
+    let d = structuredClone(t);
+    for (let e of n) d[e] || (d[e] = {});
+    let f = 0,
+        p = [];
+    for (let e of c) d[e.station][String(e.shift)] = e.name, e.name && (f += 1, e.unknown && !p.includes(e.name) && p.push(e.name));
+    for (let t of [1, 2, 3]) V(e, d, n, t);
+    for (let t of c) t.name && pe(e, t.name, t.station, t.shift);
+    return {
+        grid: d,
+        placed: f,
+        unknown: p
+    }
+}
+
+function ve(e) {
+    return Object.keys(e.training || {}).filter(t => e.training[t] && !e.quals?.[t] && !e.blocked?.[t])
+}
+
+function ye(e) {
+    return e.filter(e => e.reg && !e.offline && (e.trainSessions ?? 0) > 0).map(e => `${e.name}:${e.trainSessions}:${ve(e).slice().sort().join(`+`)}`).sort().join(`|`)
+}
+
+function be(e) {
+    let t = e >>> 0 || 1;
+    return () => {
+        t |= 0, t = t + 1831565813 | 0;
+        let e = Math.imul(t ^ t >>> 15, 1 | t);
+        return e = e + Math.imul(e ^ e >>> 7, 61 | e) ^ e, ((e ^ e >>> 14) >>> 0) / 4294967296
+    }
+}
+
+function xe(e, t) {
+    let n = e.slice();
+    for (let e = n.length - 1; e > 0; e--) {
+        let r = Math.floor(t() * (e + 1));
+        [n[e], n[r]] = [n[r], n[e]]
+    }
+    return n
+}
+
+function K(e, t, n = [], r) {
+    let i = e.filter(e => e.reg && !e.offline),
+        a = i.filter(e => (e.trainSessions ?? 0) > 0);
+    if (a.length === 0) return {
+        seats: [],
+        warning: ``
+    };
+    let o = new Set,
+        s = new Set;
+    for (let e of n)
+        for (let t of e.shifts || []) o.add(`${e.operator}|${t}`), s.add(`${e.station}|${t}`);
+    let c = [],
+        l = a.filter(e => ve(e).every(e => !t.includes(e)));
+
+    function u(e, t) {
+        let n = new Set(c.filter(t => t.shift === e).map(e => e.name));
+        return t && n.add(t), n
+    }
+
+    function d(e, t, n) {
+        return s.has(`${e}|${t}`) ? 1 : i.filter(r => !n.has(r.name) && !k(r, t) && A(r, e) && !o.has(`${r.name}|${t}`)).length
+    }
+
+    function f(e, n) {
+        let r = t.filter(t => !s.has(`${t}|${e}`)),
+            a = i.filter(t => !n.has(t.name) && !k(t, e) && !o.has(`${t.name}|${e}`));
+        if (a.length < r.length) return !1;
+        let c = Array(a.length).fill(-1);
+
+        function l(e, t) {
+            let n = r[e];
+            for (let r = 0; r < a.length; r++)
+                if (!t.has(r) && A(a[r], n) && (t.add(r), c[r] === -1 || l(c[r], t))) return c[r] = e, !0;
+            return !1
+        }
+        for (let e = 0; e < r.length; e++)
+            if (!l(e, new Set)) return !1;
+        return !0
+    }
+    let p = r === void 0 ? null : be(r),
+        m = a.map(e => ({
+            o: e,
+            need: Math.min(3, e.trainSessions || 0),
+            jobs: ve(e).filter(e => t.includes(e))
+        })).filter(e => e.jobs.length > 0).sort((e, t) => t.need - e.need || e.jobs.length - t.jobs.length || e.o.name.localeCompare(t.o.name)),
+        h = p ? xe(m, p) : m,
+        g = new Set;
+    for (let e of h) {
+        let n = new Set,
+            r = p ? xe([1, 2, 3], p) : [1, 2, 3],
+            i = p ? xe(e.jobs, p) : e.jobs;
+        for (let a = 0; a < e.need; a++) {
+            let a = null,
+                l = [];
+            for (let p of r)
+                if (!(n.has(p) || k(e.o, p) || o.has(`${e.o.name}|${p}`)))
+                    for (let n of i) {
+                        let r = u(p, e.o.name);
+                        if (!f(p, r)) continue;
+                        let i = 0;
+                        for (let e of t) s.has(`${e}|${p}`) || d(e, p, r) === 1 && (i += 1);
+                        let o = -c.filter(e => e.shift === p).length * 10 - i - d(n, p, r),
+                            m = {
+                                station: n,
+                                shift: p,
+                                score: o
+                            };
+                        l.push(m), (!a || o > a.score) && (a = m)
+                    }
+            if (p && l.length > 0 && (a = l[Math.floor(p() * l.length)]), !a) {
+                g.add(e.o.name);
+                break
+            }
+            n.add(a.shift), c.push({
+                name: e.o.name,
+                station: a.station,
+                shift: a.shift
+            })
+        }
+    }
+    let _ = [];
+    return (g.size > 0 || l.length > 0) && _.push(`Not enough people to train.`), l.length > 0 && _.push(`${l.map(e=>e.name).join(`, `)} ${l.length===1?`has`:`have`} no training job on the skills matrix.`), {
+        seats: c,
+        warning: _.join(` `)
+    }
+}
+
+function ke(e) {
+    let t = e >>> 0;
+    return () => {
+        t |= 0, t = t + 1831565813 | 0;
+        let e = Math.imul(t ^ t >>> 15, 1 | t);
+        return e = e + Math.imul(e ^ e >>> 7, 61 | e) ^ e, ((e ^ e >>> 14) >>> 0) / 4294967296
+    }
+}
+
+function q(e, t) {
+    let n = e.slice();
+    for (let e = n.length - 1; e > 0; e--) {
+        let r = Math.floor(t() * (e + 1));
+        [n[e], n[r]] = [n[r], n[e]]
+    }
+    return n
+}
+var Ae = {
+    1: null,
+    2: 1,
+    3: 2
+};
+
+function je(e, t, n, r, i, a, o) {
+    let s = ke(r),
+        c = q(e.filter(e => e.reg && !e.offline), s),
+        l = t.slice(),
+        u = new Set(c.filter(e => O(e) === 1).map(e => e.name)),
+        d = {};
+    c.forEach(e => {
+        d[e.name] = e
+    });
+    let f = {};
+    l.forEach(e => {
+        f[e] = {
+            1: null,
+            2: null,
+            3: null
+        }
+    });
+    let p = {};
+    c.forEach(e => {
+        p[e.name] = 0
+    });
+    let m = {},
+        h = {};
+    c.forEach(e => {
+        m[e.name] = {}, h[e.name] = 0
+    });
+
+    function g(e, t) {
+        let n = m[e];
+        n[t] = (n[t] || 0) + 1, n[t] === 1 && h[e]++
+    }
+
+    function _(e, t) {
+        let n = m[e];
+        n[t]--, n[t] === 0 && (h[e]--, delete n[t])
+    }
+    let v = {
+        1: [],
+        2: [],
+        3: []
+    };
+    for (let e of a || [])
+        if (e && e.operator && e.station && l.includes(e.station) && d[e.operator])
+            for (let t of e.shifts || [])(t === 1 || t === 2 || t === 3) && v[t].push(e);
+    let y = {
+            1: new Set,
+            2: new Set,
+            3: new Set
+        },
+        b = {
+            1: new Set,
+            2: new Set,
+            3: new Set
+        };
+    for (let e of [1, 2, 3]) {
+        let t = {},
+            r = {};
+        for (let n of v[e]) {
+            if (b[e].has(n.station)) continue;
+            let i = c.findIndex(e => e.name === n.operator);
+            i === -1 || i in t || (t[i] = n.station, r[n.station] = i, y[e].add(i), b[e].add(n.station))
+        }
+
+        function a(t, r) {
+            let a = !u.has(t.name),
+                o = Ae[e],
+                c = o !== null && f[r][o] === t.name && a,
+                l = e === 3 && !c && f[r][1] === t.name && a,
+                d = c ? -6e3 : l ? -400 : 0;
+            if (d -= p[t.name] * 5, a && !m[t.name][r] && h[t.name] < 3 && O(t) >= 3 && (d += 120), n && n[t.name] && !n[t.name].includes(r) && O(t) > 1 && (d += 4), i && i[t.name] && O(t) > 1) {
+                let n = i[t.name][r];
+                n !== void 0 && (d -= 4, Number(n) === e && (d -= 2))
+            }
+            return d + O(t) * .3 + s() * 8
+        }
+
+        function o(n, i) {
+            let s = c.map((e, t) => ({
+                o: e,
+                idx: t
+            })).filter(({
+                o: t,
+                idx: r
+            }) => A(t, n) && !k(t, e) && !i.has(r));
+            s.sort((e, t) => a(t.o, n) - a(e.o, n));
+            for (let {
+                    idx: a
+                }
+                of s)
+                if (i.add(a), !(a in t) || !y[e].has(a) && o(t[a], i)) return t[a] = n, r[n] = a, !0;
+            return !1
+        }
+        let d = {};
+        for (let t of l) d[t] = c.filter(n => A(n, t) && !k(n, e)).length;
+        let _ = q(l, s).sort((e, t) => d[e] - d[t]).filter(t => !b[e].has(t));
+        for (let e of _) o(e, new Set);
+        for (let t of Object.keys(r)) {
+            let n = c[r[t]].name;
+            f[t][e] = n, p[n]++, g(n, t)
+        }
+    }
+
+    function x() {
+        let e = 0;
+        for (let t of l) {
+            let n = f[t][1],
+                r = f[t][2],
+                i = f[t][3];
+            n && n === r && !u.has(n) && (e += 6e3), r && r === i && !u.has(r) && (e += 6e3), n && n === i && n !== r && !u.has(n) && (e += 400)
+        }
+        for (let t of Object.keys(p)) e += Math.max(0, p[t] - 2) * 8;
+        for (let t of Object.keys(h)) {
+            let n = d[t];
+            if (!n || O(n) < 2) continue;
+            let r = h[t];
+            e -= r * 15, r >= 3 ? e -= 900 : (p[t] || 0) >= 3 && (e += 900)
+        }
+        if (i)
+            for (let t of l)
+                for (let n of [1, 2, 3]) {
+                    let r = f[t][n];
+                    if (!r) continue;
+                    let a = d[r];
+                    if (!a || O(a) <= 1) continue;
+                    let o = i[r] && i[r][t];
+                    o !== void 0 && (e += 4, Number(o) === n && (e += 2))
+                }
+        if (n)
+            for (let t of l)
+                for (let r of [1, 2, 3]) {
+                    let i = f[t][r];
+                    if (!i || !n[i] || n[i].includes(t)) continue;
+                    let a = d[i];
+                    !a || O(a) <= 1 || (e -= 4)
+                }
+        return e
+    }
+    if (o) {
+        for (let e of c) p[e.name] = 0, m[e.name] = {}, h[e.name] = 0;
+        for (let e of l) {
+            f[e] = {
+                1: null,
+                2: null,
+                3: null
+            };
+            for (let t of [1, 2, 3]) {
+                let n = D(o[e], t);
+                f[e][t] = n && d[n] ? n : null, f[e][t] && (p[n]++, g(n, e))
+            }
+        }
+    }
+    let S = {
+        1: new Set,
+        2: new Set,
+        3: new Set
+    };
+    for (let e of [1, 2, 3])
+        for (let t of l) {
+            let n = f[t][e];
+            n && S[e].add(n)
+        }
+    let C = new Set;
+    for (let e of [1, 2, 3])
+        for (let t of b[e]) C.add(`${t}|${e}`);
+
+    function w(e, t, n, r) {
+        if (C.has(`${e}|${t}`) || C.has(`${n}|${r}`)) return !1;
+        let i = f[e][t],
+            a = f[n][r];
+        if (i === a) return !1;
+        let o = i ? d[i] : void 0,
+            s = a ? d[a] : void 0;
+        return !(i && (!s || !A(s, e) || k(s, t)) || a && (!o || !A(o, n) || k(o, r)) || t !== r && (a && S[t].has(a) || i && S[r].has(i)))
+    }
+
+    function T(e, t, n, r) {
+        let i = f[e][t],
+            a = f[n][r];
+        t !== r && (i && (S[t].delete(i), S[r].add(i)), a && (S[r].delete(a), S[t].add(a))), i && (p[i]--, _(i, e)), a && (p[a]--, _(a, n)), f[e][t] = a, f[n][r] = i, i && (p[i]++, g(i, n)), a && (p[a]++, g(a, e))
+    }
+    let E = [];
+    for (let e of l)
+        for (let t of [1, 2, 3]) E.push([e, t]);
+
+    function j() {
+        let e = [];
+        for (let t of l)
+            for (let [n, r] of [
+                    [1, 2],
+                    [2, 3],
+                    [1, 3]
+                ]) {
+                let i = f[t][n];
+                if (i && i === f[t][r] && !u.has(i))
+                    for (let i of [n, r])
+                        for (let n of l) n !== t && e.push([t, i, n, i])
+            }
+        return e
+    }
+
+    function ee() {
+        let e = [
+            [1, 2],
+            [2, 3],
+            [1, 3]
+        ];
+        for (let t of q(l, s))
+            for (let [n, r] of e) {
+                let e = f[t][n];
+                if (e && e === f[t][r] && !u.has(e)) {
+                    for (let e of [n, r])
+                        for (let n of l)
+                            if (n !== t && w(t, e, n, e)) {
+                                if (T(t, e, n, e), x() < P) return P = x(), !0;
+                                for (let [e, t, n, r] of j()) {
+                                    if (!w(e, t, n, r)) continue;
+                                    T(e, t, n, r);
+                                    let i = x();
+                                    if (i < P) return P = i, !0;
+                                    T(e, t, n, r)
+                                }
+                                T(t, e, n, e)
+                            }
+                }
+            }
+        return !1
+    }
+
+    function M() {
+        let e = q(c.map(e => e.name), s);
+        for (let t of e) {
+            let e = d[t];
+            if (!(!e || O(e) < 3 || h[t] >= 3) && !((p[t] || 0) < 3)) {
+                for (let e of l)
+                    if (!((m[t][e] || 0) < 2)) {
+                        for (let n of [1, 2, 3])
+                            if (f[e][n] === t) {
+                                for (let r of l)
+                                    if (r !== e && !m[t][r] && w(e, n, r, n)) {
+                                        if (T(e, n, r, n), x() < P) return P = x(), !0;
+                                        for (let [e, t, n, r] of j()) {
+                                            if (!w(e, t, n, r)) continue;
+                                            T(e, t, n, r);
+                                            let i = x();
+                                            if (i < P) return P = i, !0;
+                                            T(e, t, n, r)
+                                        }
+                                        T(e, n, r, n)
+                                    }
+                            }
+                    }
+            }
+        }
+        return !1
+    }
+
+    function N() {
+        for (let e of [1, 2, 3]) {
+            let t = q(l, s);
+            for (let n = 0; n < t.length; n++)
+                for (let r = n + 1; r < t.length; r++)
+                    for (let i = r + 1; i < t.length; i++) {
+                        let a = t[n],
+                            o = t[r],
+                            s = t[i];
+                        if (w(a, e, o, e)) {
+                            if (T(a, e, o, e), w(a, e, s, e)) {
+                                T(a, e, s, e);
+                                let t = x();
+                                if (t < P) return P = t, !0;
+                                T(a, e, s, e)
+                            }
+                            T(a, e, o, e)
+                        }
+                    }
+        }
+        return !1
+    }
+    let P = x(),
+        F = !0,
+        I = 0;
+    for (; F && I < 200;) {
+        F = !1, I++;
+        let e = q(E, s);
+        for (let t = 0; t < e.length; t++)
+            for (let n = t + 1; n < e.length; n++) {
+                let [r, i] = e[t], [a, o] = e[n];
+                if (!w(r, i, a, o)) continue;
+                T(r, i, a, o);
+                let s = x();
+                s < P ? (P = s, F = !0) : T(r, i, a, o)
+            }!F && (ee() || M() || N()) && (F = !0)
+    }
+    let L = {};
+    for (let e of l) L[e] = {
+        1: f[e][1],
+        2: f[e][2],
+        3: f[e][3]
+    };
+    return {
+        result: L,
+        stations: l,
+        available: c,
+        score: P
+    }
+}
+
+function J(e, t, n) {
+    let r = t.reduce((t, n) => t + [1, 2, 3].filter(t => D(e[n], t)).length, 0),
+        i = t.length * 3,
+        a = {};
+    n.forEach(e => {
+        a[e.name] = e
+    });
+    let o = {};
+    for (let n of t)
+        for (let t of [1, 2, 3]) {
+            let r = D(e[n], t);
+            r && (o[r] || (o[r] = new Set), o[r].add(n))
+        }
+    let s = Object.keys(o).length,
+        c = Object.values(o).filter(e => e.size >= 2).length,
+        l = {
+            1: 0,
+            2: 0,
+            3: 0
+        },
+        u = {
+            1: [],
+            2: [],
+            3: []
+        };
+    for (let e of Object.keys(o)) {
+        let t = Math.min(o[e].size, 3);
+        l[t]++, u[t].push(e)
+    }
+    let d = {
+        1: [],
+        2: [],
+        3: []
+    };
+    for (let r of [1, 2, 3]) {
+        let i = new Set(t.map(t => D(e[t], r)).filter(Boolean));
+        d[r] = n.filter(e => !i.has(e.name)).map(e => e.name)
+    }
+    let f = [];
+    for (let n of t)
+        for (let t of [1, 2, 3]) D(e[n], t) || f.push({
+            station: n,
+            shift: t
+        });
+    return {
+        filled: r,
+        total: i,
+        overall: s ? Math.round(c / s * 1e3) / 10 : 0,
+        bucket: l,
+        names: u,
+        extra: d,
+        stuckMulti: (u[1] || []).filter(e => O(a[e]) > 1),
+        gaps: f
+    }
+}
+var Me = `rotation-optimizer-v1`,
+    Ne = `rotation-optimizer-board`,
+    Pe = `rotation-optimizer-hint`,
+    Fe = `rotation-optimizer-roster`,
+    Ie = `rotation-optimizer-skills`;
+
+function Le(e) {
+    for (let t of e.operators) {
+        let e = t.name.toLowerCase().replace(/\./g, ``).replace(/\s+/g, ` `).trim(),
+            n = e === `n al shammari` || e === `l smith`;
+        t.reg = !0, t.offline = !1, t.b1 = n, t.b2 = n, t.b3 = n
+    }
+}
+
+function Re(e) {
+    let t = {
+        "g cole": [`45L`, `46R`],
+        "n al shammari": [`37R`],
+        "l smith": [`41L`],
+        "a cairnes": [`36R`]
+    };
+    for (let n of e.operators) {
+        let e = t[n.name.toLowerCase().replace(/\./g, ``).replace(/\s+/g, ` `).trim()];
+        if (e)
+            for (let t of e) n.quals[t] = !0, delete n.blocked[t], delete n.training[t]
+    }
+}
+
+function ze() {
+    return E(Oe)
+}
+
+function Y(e) {
+    try {
+        return localStorage.setItem(Me, JSON.stringify(e)), !0
+    } catch {
+        return !1
+    }
+}
+
+function X(e) {
+    try {
+        if (!e) localStorage.removeItem(Ne);
+        else {
+            let t = {
+                result: e.result,
+                stations: e.stations,
+                score: e.score,
+                training: e.training,
+                trainingKey: e.trainingKey,
+                trainingWarning: e.trainingWarning
+            };
+            localStorage.setItem(Ne, JSON.stringify(t))
+        }
+        return !0
+    } catch {
+        return !1
+    }
+}
+
+function Be(e, t) {
+    let n = e.stations.filter(e => t.stations.includes(e)),
+        r = {};
+    for (let t of n) r[t] = e.result[t] ?? {};
+    let i = new Set;
+    for (let e of n)
+        for (let t of [1, 2, 3]) {
+            let n = D(r[e], t);
+            n && i.add(n)
+        }
+    let a = t.operators.filter(e => e.reg && !e.offline || i.has(e.name));
+    return {
+        result: r,
+        stations: n,
+        available: a,
+        score: e.score,
+        stats: J(r, n, a),
+        training: e.training,
+        trainingKey: e.trainingKey,
+        trainingWarning: e.trainingWarning
+    }
+}
+
+function Ve(e) {
+    return {
+        result: e.result,
+        stations: e.stations,
+        score: e.score,
+        training: e.training,
+        trainingKey: e.trainingKey,
+        trainingWarning: e.trainingWarning
+    }
+}
+
+function He(e) {
+    try {
+        let t = localStorage.getItem(Ne);
+        if (!t) return null;
+        let n = JSON.parse(t);
+        if (!n || !n.result || !Array.isArray(n.stations)) return null;
+        let r = n.stations.filter(t => e.stations.includes(t));
+        if (r.length === 0) return null;
+        let i = {};
+        for (let e of r) i[e] = n.result[e] ?? {};
+        let a = new Set;
+        for (let e of r)
+            for (let t of [1, 2, 3]) {
+                let n = D(i[e], t);
+                n && a.add(n)
+            }
+        let o = e.operators.filter(e => e.reg && !e.offline || a.has(e.name));
+        return {
+            result: i,
+            stations: r,
+            available: o,
+            score: typeof n.score == `number` ? n.score : 0,
+            stats: J(i, r, o),
+            training: Array.isArray(n.training) ? n.training : void 0,
+            trainingKey: typeof n.trainingKey == `string` ? n.trainingKey : void 0,
+            trainingWarning: typeof n.trainingWarning == `string` ? n.trainingWarning : void 0
+        }
+    } catch {
+        return null
+    }
+}
+
+function qe(e) {
+    let t = e.stations.slice(),
+        n = {};
+    for (let e of t) n[e] = {};
+    let r = ce(e);
+    return {
+        result: n,
+        stations: t,
+        available: r,
+        score: 0,
+        stats: J(n, t, r)
+    }
+}
+
+function tt(e) {
+    let t = e.toLowerCase().replace(/\./g, ``).replace(/\s+/g, ` `).trim();
+    return t === `n al shammari` || t === `l smith`
+}
+var Q = 3;
+
+function nt(e) {
+    return e.quals ? Object.keys(e.quals).filter(t => e.quals[t] && !e.blocked?.[t]).length : 0
+}
+
+function rt(e) {
+    return {
+        ...e,
+        operators: e.operators.filter(e => !tt(e.name)).map(e => ({
+            ...e,
+            reg: !0,
+            offline: !1
+        }))
+    }
+}
+
+function $(e) {
+    return 3 - !!e.b1 - !!e.b2 - !!e.b3
+}
+
+function it(e) {
+    let t = [];
+    return e.b1 && t.push(`S1`), e.b2 && t.push(`S2`), e.b3 && t.push(`S3`), t
+}
+
+function at(e, t, n, r, i) {
+    let a = nt(e),
+        o = $(e),
+        s = Math.min(o, a + 1),
+        c = [];
+    if (o < 3 ? c.push(`${e.name} is blocked off ${it(e).join(` and `)}, so this job helps the station, not a 3-job day, until that block is cleared.`) : a < 3 ? c.push(`Recommend ${e.name} for ${t}. They know ${a} job${a===1?``:`s`}; this takes them to ${s}, toward a 3-job day.`) : c.push(`Recommend ${e.name} for ${t} so another person can cover a shift there.`), n === 0) c.push(`Nobody on the team can do ${t}, so the rota cannot put anyone there.`);
+    else if (n < Q) {
+        let e = r.length ? r.join(` and `) : `${n} people`;
+        c.push(`${t} only has ${e}. One more qualified name means three different people can take the three shifts.`)
+    }
+    return i && c.push(`Already in training — mark them qualified when they are signed off.`), c.join(` `)
+}
+
+function ot(e) {
+    let t = rt(e),
+        n = ce(t),
+        r = se(t),
+        i = new Map(r.map(e => [e.station, e])),
+        a = e.dismissedSuggestions ?? {},
+        o = n.filter(e => $(e) < 3).map(e => ({
+            name: e.name,
+            blocked: it(e)
+        })).sort((e, t) => e.name.localeCompare(t.name)),
+        s = r.filter(e => e.active < Q).map(e => ({
+            station: e.station,
+            active: e.active,
+            names: e.names
+        })),
+        c = [];
+    for (let t of n) {
+        if (tt(t.name)) continue;
+        let n = $(t);
+        if (n === 0) continue;
+        let r = nt(t),
+            o = Math.max(0, Math.min(3, n) - r);
+        for (let s of e.stations) {
+            if (A(t, s) || t.blocked?.[s]) continue;
+            let e = i.get(s),
+                l = e?.active ?? 0;
+            if (a[`${t.name}|${s}`]) continue;
+            let u = !!t.training?.[s],
+                d = Math.max(0, Q - l);
+            if (d === 0 && o === 0) continue;
+            let f = d * 40 + o * 28;
+            u && (f += 50), n >= 3 && o > 0 && d > 0 && (f += 20), n >= 3 && o > 0 && (f += 8), c.push({
+                operator: t.name,
+                station: s,
+                skillsNow: r,
+                openShifts: n,
+                blockedShifts: it(t),
+                stationActive: l,
+                alreadyTraining: u,
+                why: at(t, s, l, e?.names ?? [], u),
+                score: f
+            })
+        }
+    }
+    c.sort((e, t) => t.score - e.score || e.stationActive - t.stationActive || e.station.localeCompare(t.station) || e.operator.localeCompare(t.operator));
+    let l = {},
+        u = {},
+        d = [];
+    for (let e of c) {
+        if ((l[e.operator] || 0) >= 2) continue;
+        let t = e.stationActive < Q ? 3 : 1;
+        if (!((u[e.station] || 0) >= t) && !(e.stationActive >= Q && e.skillsNow >= Math.min(3, e.openShifts) && !e.alreadyTraining) && (d.push(e), l[e.operator] = (l[e.operator] || 0) + 1, u[e.station] = (u[e.station] || 0) + 1, d.length >= 8)) break
+    }
+    return {
+        inToday: n.length,
+        readyForThree: n.filter(e => $(e) >= 3 && nt(e) >= 3).length,
+        needSkills: n.filter(e => $(e) >= 3 && nt(e) < 3).length,
+        shiftCapped: o,
+        thin: s,
+        suggestions: d
+    }
+}
+
+const KEY = "rotation-optimizer-v1";
+const KEY_BOARD = "rotation-optimizer-board";
+const KEY_HINT = "rotation-optimizer-hint";
+const KEY_ROSTER = "rotation-optimizer-roster";
+const KEY_SKILLS = "rotation-optimizer-skills";
+
+const state = {
+  data: null,
+  ready: false,
+  storageOk: true,
+  hintOn: true,
+  tab: "rota",
+  solve: null,
+};
+
+const ui = {
+  rotaMsg: "",
+  rotaTone: "",
+  solving: false,
+  issuesOnly: false,
+  picker: null,
+  confirmOpen: false,
+  confirmDate: "",
+  teamView: "today",
+  teamQuery: "",
+  teamMsg: "",
+  teamTone: "",
+  newPerson: "",
+  newStation: "",
+  removeOp: "",
+  removeStn: "",
+  dataPasteOpen: false,
+  dataPaste: "",
+  dataMsg: "",
+  dataTone: "",
+  resetArmed: false,
+  weekOpen: null,
+};
+
+let history = [];
+let solveGen = 0;
+let resetTimer = 0;
+let focusSnap = null;
+
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "\u0026amp;",
+    "<": "\u0026lt;",
+    ">": "\u0026gt;",
+    '"': "\u0026quot;",
+    "'": "\u0026#39;",
+  }[c]));
+}
+
+function Y(data) {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(data));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function X(board) {
+  try {
+    if (!board) localStorage.removeItem(KEY_BOARD);
+    else localStorage.setItem(KEY_BOARD, JSON.stringify(Ve(board)));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function snapFocus() {
+  const el = document.activeElement;
+  if (!el || !el.dataset || !el.dataset.focus) {
+    focusSnap = null;
+    return;
+  }
+  focusSnap = {
+    id: el.dataset.focus,
+    start: el.selectionStart,
+    end: el.selectionEnd,
+  };
+}
+
+function restoreFocus() {
+  if (!focusSnap) return;
+  const el = document.querySelector(`[data-focus="${CSS.escape(focusSnap.id)}"]`);
+  if (!el) return;
+  el.focus();
+  try {
+    if (focusSnap.start != null) el.setSelectionRange(focusSnap.start, focusSnap.end);
+  } catch {
+    /* date and some fields have no selection */
+  }
+}
+
+function render() {
+  const root = document.getElementById("app");
+  root.innerHTML = shell();
+  restoreFocus();
+}
+
+function hydrate() {
+  let data = ze();
+  let storageOk = true;
+  let hintOn = true;
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) data = E(JSON.parse(raw));
+    if (localStorage.getItem(KEY_ROSTER) !== "1") {
+      Le(data);
+      storageOk = Y(data);
+      localStorage.setItem(KEY_ROSTER, "1");
+    }
+    if (localStorage.getItem(KEY_SKILLS) !== "1") {
+      Re(data);
+      storageOk = Y(data);
+      localStorage.setItem(KEY_SKILLS, "1");
+    }
+    hintOn = localStorage.getItem(KEY_HINT) !== "0";
+  } catch {
+    storageOk = false;
+  }
+  let solve = null;
+  const plan = data.dayPlans[data.selectedDay];
+  if (plan && plan.board) solve = Be(plan.board, data);
+  else if (!plan) {
+    solve = storageOk ? He(data) : null;
+    data.dayPlans[data.selectedDay] = {
+      people: {},
+      pins: structuredClone(data.pins),
+      board: solve ? Ve(solve) : null,
+    };
+    if (storageOk) Y(data);
+  }
+  state.data = data;
+  state.ready = true;
+  state.storageOk = storageOk;
+  state.hintOn = hintOn;
+  state.solve = solve;
+  render();
+}
+
+function update(fn) {
+  snapFocus();
+  const data = structuredClone(state.data);
+  fn(data);
+  state.data = data;
+  state.storageOk = Y(data);
+  render();
+}
+
+function setSolve(board) {
+  const data = structuredClone(state.data);
+  const day = data.selectedDay;
+  data.dayPlans[day] = {
+    people: {},
+    pins: structuredClone(data.pins),
+    board: board ? Ve(board) : null,
+  };
+  state.data = data;
+  state.solve = board;
+  state.storageOk = Y(data) && X(board);
+  render();
+}
+
+function selectDay(day) {
+  if (day === state.data.selectedDay) return;
+  snapFocus();
+  const data = structuredClone(state.data);
+  const cur = data.selectedDay;
+  data.dayPlans[cur] = {
+    people: {},
+    pins: data.pins,
+    board: state.solve ? Ve(state.solve) : (data.dayPlans[cur] && data.dayPlans[cur].board) || null,
+  };
+  data.selectedDay = day;
+  if (!data.dayPlans[day]) {
+    data.dayPlans[day] = { people: {}, pins: data.pins, board: null };
+  }
+  const saved = data.dayPlans[day] && data.dayPlans[day].board;
+  const solve = saved ? Be(saved, data) : null;
+  X(solve);
+  state.data = data;
+  state.solve = solve;
+  state.storageOk = Y(data);
+  history = [];
+  ui.rotaMsg = "";
+  ui.rotaTone = "";
+  ui.picker = null;
+  render();
+}
+
+function replaceData(raw) {
+  const data = E(raw);
+  state.data = data;
+  state.solve = null;
+  state.storageOk = Y(data) && X(null);
+  history = [];
+  ui.picker = null;
+  render();
+}
+
+function resetSeed() {
+  const data = ze();
+  state.data = data;
+  state.solve = null;
+  state.storageOk = Y(data) && X(null);
+  history = [];
+  ui.picker = null;
+  render();
+}
+
+function remember() {
+  history.push({
+    solve: state.solve ? structuredClone(state.solve) : null,
+    pins: structuredClone(state.data.pins),
+  });
+  if (history.length > 40) history.shift();
+}
+
+function boardNow() {
+  return state.solve || qe(state.data);
+}
+
+function setMsg(text, tone) {
+  ui.rotaMsg = text;
+  ui.rotaTone = tone || "";
+}
+
+async function runSolve() {
+  const token = ++solveGen;
+  ui.solving = true;
+  setMsg("Solving…", "busy");
+  render();
+  await new Promise((r) => setTimeout(r, 30));
+  try {
+    const data = state.data;
+    const n = Math.floor(Math.random() * 1e6);
+    const yesterday = data.avoidYesterdayEnabled ? ae(data) : null;
+    const worked = ie(data);
+    let best = null;
+    let bestTrain = K(data.operators, data.stations, data.pins);
+    let bestSeats = -1;
+    for (let r = 0; r < 40; r++) {
+      const seed = (n * 100003 + r * 7919) >>> 0;
+      const train = K(data.operators, data.stations, data.pins, r === 0 ? undefined : seed);
+      const ops = data.operators.map((person) => {
+        const shifts = train.seats.filter((seat) => seat.name === person.name).map((seat) => seat.shift);
+        if (!shifts.length) return person;
+        return {
+          ...person,
+          b1: person.b1 || shifts.includes(1),
+          b2: person.b2 || shifts.includes(2),
+          b3: person.b3 || shifts.includes(3),
+        };
+      });
+      const solved = je(ops, data.stations, worked, seed, yesterday, data.pins);
+      const seats = train.seats.length;
+      if (!best || seats > bestSeats || (seats === bestSeats && solved.score < best.score)) {
+        best = solved;
+        bestTrain = train;
+        bestSeats = seats;
+      }
+      if (token !== solveGen) return;
+      if (r % 4 === 3) {
+        setMsg(`Solving… ${r + 1}/40`, "busy");
+        render();
+        await new Promise((res) => setTimeout(res, 0));
+      }
+    }
+    if (token !== solveGen || !best) return;
+    const stats = J(best.result, best.stations, best.available);
+    remember();
+    ui.picker = null;
+    const gaps = stats.gaps.length;
+    setMsg(
+      bestTrain.warning
+        ? bestTrain.warning
+        : gaps
+          ? `Solved. ${gaps} slot${gaps === 1 ? "" : "s"} still open.`
+          : "Solved.",
+      bestTrain.warning ? "err" : gaps ? "" : "ok",
+    );
+    ui.solving = false;
+    setSolve({
+      ...best,
+      stats,
+      training: bestTrain.seats,
+      trainingKey: ye(data.operators),
+      trainingWarning: bestTrain.warning,
+    });
+  } catch (err) {
+    if (token !== solveGen) return;
+    ui.solving = false;
+    setMsg(err instanceof Error ? err.message : "Solve failed.", "err");
+    render();
+  }
+}
+
+function applyGrid(grid, available, message, tone) {
+  const current = boardNow();
+  setMsg(message, tone);
+  ui.picker = null;
+  setSolve({
+    ...current,
+    result: grid,
+    available: available || current.available,
+    stats: J(grid, current.stations, available || current.available),
+  });
+}
+
+function pasteRota(text, station, shift) {
+  const raw = String(text || "");
+  if (!raw.trim()) return;
+  const multi = raw.includes("\t") || raw.includes("\n") || raw.includes("·") || !station || !shift;
+  const current = boardNow();
+  remember();
+  if (multi) {
+    try {
+      let grid = current.result;
+      let placed = 0;
+      let unknown = [];
+      let available = current.available;
+      update((data) => {
+        const parsed = _e(data, current.result, current.stations, raw.trim());
+        grid = parsed.grid;
+        placed = parsed.placed;
+        unknown = parsed.unknown;
+        const names = new Set();
+        for (const st of current.stations) {
+          for (const sh of [1, 2, 3]) {
+            const name = D(grid[st], sh);
+            if (name) names.add(name);
+          }
+        }
+        available = data.operators.filter((person) => (person.reg && !person.offline) || names.has(person.name));
+      });
+      applyGrid(
+        grid,
+        available,
+        unknown.length ? `Pinned ${placed}. Not on the team: ${unknown.join(", ")}.` : `Pinned ${placed} from Excel.`,
+        unknown.length ? "" : "ok",
+      );
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "Could not paste that.", "err");
+      render();
+    }
+    return;
+  }
+  let grid = current.result;
+  update((data) => {
+    grid = me(data, current.result, current.stations, station, shift, raw.trim());
+  });
+  applyGrid(grid, current.available, `Pinned ${raw.trim()} here.`, "ok");
+}
+
+function pinPerson(name) {
+  const pick = ui.picker;
+  if (!pick) return;
+  const current = boardNow();
+  remember();
+  let grid = current.result;
+  update((data) => {
+    grid = me(data, current.result, current.stations, pick.station, pick.shift, name);
+  });
+  ui.picker = null;
+  applyGrid(grid, current.available, name ? `Pinned ${name} here. The next solve keeps them here.` : "Slot cleared.", "ok");
+}
+
+function clearSlot() {
+  const pick = ui.picker;
+  if (!pick) return;
+  const current = boardNow();
+  const pinned = current && state.data.pins.some((pin) => {
+    const name = D(current.result[pick.station], pick.shift);
+    return pin.operator === name && pin.station === pick.station && pin.shifts.includes(pick.shift);
+  });
+  const currentName = D(current.result[pick.station], pick.shift);
+  remember();
+  let grid = current.result;
+  update((data) => {
+    grid = me(data, current.result, current.stations, pick.station, pick.shift, null);
+  });
+  ui.picker = null;
+  applyGrid(grid, current.available, pinned || currentName ? (pinned ? "Slot cleared. Pin lifted." : "Slot cleared.") : "Slot cleared.", "ok");
+}
+
+function goBack() {
+  const prev = history.pop();
+  if (!prev) return;
+  update((data) => {
+    data.pins = prev.pins;
+  });
+  ui.picker = null;
+  setMsg(history.length ? "Previous version." : "That's the earliest one.", "");
+  setSolve(prev.solve);
+}
+
+function clearResult() {
+  solveGen++;
+  ui.solving = false;
+  history = [];
+  ui.picker = null;
+  setMsg("Cleared.", "");
+  update((data) => {
+    data.pins = [];
+  });
+  setSolve(null);
+}
+
+function confirmRotation() {
+  const date = ui.confirmDate;
+  if (!state.solve || !date) return;
+  let archived = false;
+  update((data) => {
+    data.weekHistory[date] = {
+      result: state.solve.result,
+      stations: state.solve.stations,
+      confirmedAt: new Date().toISOString(),
+    };
+    if (te().filter((day) => data.weekHistory[day]).length >= 5) archived = oe(data);
+  });
+  ui.confirmOpen = false;
+  setMsg(archived ? `Confirmed ${date}. Week archived after 5 days.` : `Confirmed ${date}.`, "ok");
+  render();
+}
+
+function icon(name) {
+  const common = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
+  const paths = {
+    rota: '<path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h5"/><path d="M17.5 17.5 16 16.3V14"/><circle cx="16" cy="16" r="6"/>',
+    team: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/>',
+    week: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
+    cover: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
+    train: '<path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/>',
+    data: '<line x1="22" x2="2" y1="12" y2="12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" x2="6.01" y1="16" y2="16"/><line x1="10" x2="10.01" y1="16" y2="16"/>',
+    x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+    check: '<path d="M20 6 9 17l-5-5"/>',
+  };
+  return `<svg class="ico" ${common}>${paths[name] || ""}</svg>`;
+}
+
+function shell() {
+  const tabs = [
+    ["rota", "Rota"],
+    ["team", "Team"],
+    ["week", "Week"],
+    ["cover", "Cover"],
+    ["train", "Train"],
+    ["data", "Data"],
+  ];
+  const nav = tabs.map(([id, label]) => {
+    const on = state.tab === id;
+    return `<button type="button" role="tab" aria-selected="${on}" data-testid="tab-${id}" data-act="tab" data-tab="${id}" class="tab${on ? " on" : ""}">${icon(id)}<span>${label}</span></button>`;
+  }).join("");
+  let body = `<p class="muted pad">Loading your team…</p>`;
+  if (state.ready) {
+    if (state.tab === "rota") body = viewRota();
+    else if (state.tab === "team") body = viewTeam();
+    else if (state.tab === "week") body = viewWeek();
+    else if (state.tab === "cover") body = viewCover();
+    else if (state.tab === "train") body = viewTrain();
+    else body = viewData();
+  }
+  const warn = state.ready && !state.storageOk
+    ? `<p class="banner warn">Browser storage is blocked. Use Save file after every change.</p>`
+    : "";
+  const hint = state.ready && state.hintOn
+    ? `<div class="banner hint"><p>Add to Home Screen from the browser menu so this opens full screen. Then tap Solve.</p><button type="button" class="icon-btn" aria-label="Dismiss hint" data-act="dismiss-hint">${icon("x")}</button></div>`
+    : "";
+  return `<header class="top"><div class="wrap"><p class="brand">G.Cole</p><div class="tabs" role="tablist" aria-label="Sections">${nav}</div></div></header><main class="wrap main">${warn}${hint}${body}</main>${overlays()}`;
+}
+
+function stat(n, label, tone) {
+  return `<div class="stat"><div class="stat-n ${tone || ""}">${esc(n)}</div><div class="stat-l">${esc(label)}</div></div>`;
+}
+
+function statusLine(text, tone) {
+  return `<p class="status ${tone || ""}" role="status">${esc(text)}</p>`;
+}
+
+function viewRota() {
+  const data = state.data;
+  const day = data.selectedDay || "mon";
+  const days = S.map((id) => `<button type="button" data-act="day" data-day="${id}" class="day${id === day ? " on" : ""}" aria-pressed="${id === day}">${esc(N(id).slice(0, 3))}</button>`).join("");
+  const live = K(data.operators, data.stations, data.pins);
+  const key = ye(data.operators);
+  const savedTrain = state.solve && state.solve.trainingKey === key && state.solve.training ? state.solve.training : null;
+  const seats = savedTrain || live.seats;
+  const warning = savedTrain ? (state.solve.trainingWarning || "") : live.warning;
+  const grouped = new Map();
+  for (const seat of seats) {
+    const list = grouped.get(seat.name) || [];
+    list.push(seat);
+    grouped.set(seat.name, list);
+  }
+  let trainBox = "";
+  if (seats.length || warning) {
+    const lines = [...grouped].map(([name, list]) => {
+      const byStation = new Map();
+      for (const seat of list) {
+        const shifts = byStation.get(seat.station) || [];
+        shifts.push(seat.shift);
+        byStation.set(seat.station, shifts);
+      }
+      const text = [...byStation].map(([station, shifts]) => `${station} ${shifts.sort((a, b) => a - b).map((n) => `S${n}`).join(", ")}`).join(", ");
+      return `<p class="train-line"><b>${esc(name)}</b> <span class="muted">${esc(text)}</span></p>`;
+    }).join("");
+    trainBox = `<div class="card tight">${seats.length ? `<p class="kicker">Training</p>${lines}` : ""}${warning ? `<p class="bad">${esc(warning)}</p>` : ""}</div>`;
+  }
+  const board = boardNow();
+  const offline = data.operators.filter((person) => person.offline).length;
+  const inn = ce(data).length;
+  const short = se(data).filter((row) => row.risk !== "ok");
+  const cover = short.length ? ` Tight cover: ${short.map((row) => row.station).join(", ")}.` : " Cover looks comfortable.";
+  let stats = "";
+  if (board.stats && board.stats.filled > 0) {
+    const spares = [1, 2, 3].map((shift) => {
+      const names = board.stats.extra[shift].slice();
+      for (const seat of seats) {
+        if (seat.shift === shift && !names.includes(seat.name)) names.push(seat.name);
+      }
+      const label = names.map((name) => {
+        const seat = seats.find((item) => item.name === name && item.shift === shift);
+        return seat ? `${name} ${seat.station}` : name;
+      }).join(", ");
+      return `<div class="spare"><div class="kicker tight">S${shift} spare</div><p>${esc(label || "None")}</p></div>`;
+    }).join("");
+    const pct = Math.round((board.stats.filled / Math.max(board.stats.total, 1)) * 100);
+    stats = `<div class="spares" data-testid="spares">${spares}</div><div class="stats">${
+      stat(`${board.stats.overall}%`, "Overall rotation", board.stats.overall >= 80 ? "good" : "warn")
+    }${stat(String(board.stats.bucket[3] || 0), "3-job people")}${
+      stat(String(board.stats.stuckMulti.length), "Stuck multi-skill", board.stats.stuckMulti.length ? "warn" : "good")
+    }${stat(`${pct}%`, `Slots ${board.stats.filled}/${board.stats.total}`, board.stats.filled === board.stats.total ? "good" : "warn")}</div>${
+      board.stats.stuckMulti.length ? `<p class="warn-text">Multi-skill but only one station: ${esc(board.stats.stuckMulti.join(", "))}</p>` : ""
+    }`;
+  }
+  const rows = board.stations.filter((station) => {
+    if (!ui.issuesOnly) return true;
+    const names = [1, 2, 3].map((shift) => D(board.result[station], shift) || "");
+    const counts = {};
+    names.forEach((name) => { if (name) counts[name] = (counts[name] || 0) + 1; });
+    return Object.values(counts).some((n) => n >= 2) || names.some((name) => !name);
+  });
+  const bodyRows = rows.map((station) => {
+    const names = [1, 2, 3].map((shift) => D(board.result[station], shift) || "");
+    const counts = {};
+    names.forEach((name) => { if (name) counts[name] = (counts[name] || 0) + 1; });
+    const cells = names.map((name, index) => {
+      const shift = index + 1;
+      const pinned = !!name && data.pins.some((pin) => pin.operator === name && pin.station === station && pin.shifts.includes(shift));
+      const tone = !name ? "empty" : counts[name] >= 3 ? "bad" : counts[name] === 2 ? "warn" : "";
+      return `<td class="slot ${tone}"><button type="button" class="slot-btn" data-act="slot" data-station="${esc(station)}" data-shift="${shift}" aria-label="${esc(station)} shift ${shift}, ${esc(name || "empty")}${pinned ? ", pinned" : ""}. Paste or change">${esc(name ? name + (pinned ? " *" : "") : "—")}</button></td>`;
+    }).join("");
+    return `<tr><th>${esc(station)}</th>${cells}</tr>`;
+  }).join("");
+  const empty = rows.length === 0 ? `<tr><td colspan="4" class="muted pad">No repeats or empty slots.</td></tr>` : "";
+  return `<div class="stack">
+    <div class="days">${days}</div>
+    ${trainBox}
+    <button type="button" class="btn primary block" data-testid="solve" data-act="solve" ${ui.solving ? "disabled" : ""}>${ui.solving ? "Solving…" : "Solve rotation"}</button>
+    <div class="grid2">
+      <button type="button" class="btn" data-act="solve" ${ui.solving ? "disabled" : ""}>Reshuffle</button>
+      <button type="button" class="btn" data-testid="back" data-act="back" ${ui.solving || history.length === 0 ? "disabled" : ""}>${history.length ? `Back (${history.length})` : "Back"}</button>
+      <button type="button" class="btn span2" data-act="clear">Clear result</button>
+    </div>
+    <label class="check"><input type="checkbox" data-act="avoid" ${data.avoidYesterdayEnabled ? "checked" : ""}> Avoid yesterday's stations</label>
+    ${statusLine(ui.rotaMsg, ui.rotaTone)}
+    <p class="muted">${inn} in · ${offline} offline · ${data.stations.length} stations.${esc(cover)}</p>
+    ${stats}
+    <section class="card flush">
+      <div class="row spread">
+        <h2>Today's rota</h2>
+        <label class="check small"><input type="checkbox" data-act="issues" ${ui.issuesOnly ? "checked" : ""}> Issues only</label>
+      </div>
+      <div class="scroll" data-paste="rota">
+        <table class="rota" data-testid="result-table">
+          <thead><tr><th>Stn</th><th>S1</th><th>S2</th><th>S3</th></tr></thead>
+          <tbody>${bodyRows}${empty}</tbody>
+        </table>
+      </div>
+      <p class="fine">Copy the operator sheet in Excel, tap a slot here, then paste. The names land on the matching stations and stay pinned. Tap a slot to pick a name by hand. A star is a pin.</p>
+    </section>
+    <div class="grid2">
+      <button type="button" class="btn" data-act="copy-excel">Copy for Excel</button>
+      <button type="button" class="btn" data-act="copy-message">Copy message</button>
+    </div>
+    ${board.stats && board.stats.filled > 0 ? `<button type="button" class="btn primary block" data-act="open-confirm">Confirm date</button>` : ""}
+  </div>`;
+}
+
+function overlays() {
+  let html = "";
+  if (ui.picker && state.tab === "rota") {
+    const data = state.data;
+    const board = boardNow();
+    const station = ui.picker.station;
+    const shift = ui.picker.shift;
+    const current = D(board.result[station], shift);
+    const placed = [];
+    for (const st of board.stations) {
+      const name = D(board.result[st], shift);
+      if (name) placed.push({ name, station: st });
+    }
+    const taken = new Set(data.pins.filter((pin) => pin.station !== station && pin.shifts.includes(shift)).map((pin) => pin.operator));
+    const options = data.operators
+      .filter((person) => person.reg && !person.offline && person.name !== current)
+      .filter((person) => !k(person, shift) && A(person, station) && !taken.has(person.name))
+      .map((person) => ({ name: person.name, at: (placed.find((row) => row.name === person.name) || {}).station || null }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const pinned = !!current && data.pins.some((pin) => pin.operator === current && pin.station === station && pin.shifts.includes(shift));
+    html += `<div class="sheet-back" data-act="close-picker" role="dialog" aria-modal="true" aria-label="Change ${esc(station)} shift ${shift}"><div class="sheet" data-act="stop">
+      <h2>${esc(station)} · S${shift}</h2>
+      <p class="who">${esc(current || "Empty")}${pinned ? ` <span class="action">· pinned</span>` : ""}</p>
+      ${current ? `<button type="button" class="btn danger block" data-act="clear-slot">Clear slot</button>` : ""}
+      <p class="kicker gap">Who can do this</p>
+      <div class="stack tight">${options.map((person) => `<button type="button" class="choice" data-act="pin" data-name="${esc(person.name)}"><b>${esc(person.name)}</b>${person.at ? `<span class="muted">On ${esc(person.at)}</span>` : ""}</button>`).join("") || `<p class="muted">No one free who can do this job.</p>`}</div>
+      <button type="button" class="btn block gap" data-act="close-picker">Close</button>
+    </div></div>`;
+  }
+  if (ui.confirmOpen && state.tab === "rota") {
+    html += `<div class="sheet-back" role="dialog" aria-modal="true" aria-label="Confirm this rotation"><div class="sheet" data-act="stop">
+      <h2>Confirm this rotation</h2>
+      <input class="field" type="date" data-focus="confirm-date" data-field="confirm-date" value="${esc(ui.confirmDate)}">
+      <div class="grid2 gap">
+        <button type="button" class="btn" data-act="close-confirm">Cancel</button>
+        <button type="button" class="btn primary" data-act="confirm">Confirm</button>
+      </div>
+    </div></div>`;
+  }
+  return html;
+}
+
+function viewTeam() {
+  const data = state.data;
+  const q = ui.teamQuery.trim().toLowerCase();
+  const rows = data.operators.map((person, index) => ({ person, index })).filter(({ person }) => !q || person.name.toLowerCase().includes(q));
+  const inn = data.operators.filter((person) => person.reg && !person.offline).length;
+  const off = data.operators.filter((person) => person.offline).length;
+  const warn = K(data.operators, data.stations, data.pins).warning;
+  const today = ui.teamView === "today"
+    ? `<div class="stack">${rows.map(({ person, index }) => `<section class="card${person.offline ? " off" : ""}">
+        <div class="row spread"><b class="truncate">${esc(person.name)}</b><span class="muted">${O(person)} skills</span></div>
+        <div class="five">
+          ${sessionButton(person, index)}
+          ${flagButton(index, "offline", person.offline, "Off", "off")}
+          ${flagButton(index, "b1", person.b1, "S1", "block")}
+          ${flagButton(index, "b2", person.b2, "S2", "block")}
+          ${flagButton(index, "b3", person.b3, "S3", "block")}
+        </div>
+      </section>`).join("") || `<p class="muted">No names match.</p>`}
+      ${warn ? `<p class="bad">${esc(warn)}</p>` : ""}
+      <p class="fine">In, then T1 T2 T3 for how many sessions they train today. Training uses the T marks on the skills matrix. Off = excluded. S1–S3 = blocked from that shift.</p>
+    </div>`
+    : `<div class="stack">
+      <p class="muted">Tap a square: empty, then T for training, then a green tick. A green tick is qualified and active. Tap again for a red cross: still qualified, but not active, so they stay off that job.</p>
+      <div class="scroll matrix-scroll"><table class="matrix"><thead><tr><th class="sticky">Name</th>${data.stations.map((station) => `<th>${esc(station)}</th>`).join("")}</tr></thead><tbody>
+        ${rows.map(({ person, index }) => `<tr><td class="sticky"><input class="name" aria-label="Name for row ${index + 1}" data-focus="name-${index}" data-field="op-name" data-i="${index}" value="${esc(person.name)}"></td>${data.stations.map((station) => {
+          const kind = j(person, station);
+          return `<td><button type="button" class="cell" aria-label="${esc(person.name)} ${esc(station)}: ${kind}" data-act="skill" data-i="${index}" data-station="${esc(station)}">${mark(kind)}</button></td>`;
+        }).join("")}</tr>`).join("")}
+      </tbody></table></div>
+      <p class="fine">Swipe sideways for every station.</p>
+    </div>`;
+  return `<div class="stack">
+    <div class="grid2">
+      <button type="button" class="btn ${ui.teamView === "today" ? "primary" : ""}" data-act="team-view" data-view="today">Who is in</button>
+      <button type="button" class="btn ${ui.teamView === "skills" ? "primary" : ""}" data-act="team-view" data-view="skills">Skills matrix</button>
+    </div>
+    <input class="field" data-focus="team-query" data-field="team-query" value="${esc(ui.teamQuery)}" placeholder="Find a name" aria-label="Find a name">
+    <p class="muted">${inn} in · ${off} offline · ${data.operators.length} people</p>
+    ${today}
+    <section class="card">
+      <h2>Add or remove</h2>
+      <div class="pair"><input class="field" data-focus="new-person" data-field="new-person" maxlength="40" value="${esc(ui.newPerson)}" placeholder="New person" aria-label="New person name"><button type="button" class="btn" data-act="add-person">Add person</button></div>
+      <div class="pair"><input class="field" data-focus="new-station" data-field="new-station" maxlength="12" value="${esc(ui.newStation)}" placeholder="Station code" aria-label="New station code"><button type="button" class="btn" data-act="add-station">Add station</button></div>
+      <div class="pair"><select class="field" aria-label="Operator to remove" data-field="remove-op">${`<option value="">Remove operator…</option>`}${data.operators.map((person, index) => `<option value="${index}"${String(index) === ui.removeOp ? " selected" : ""}>${esc(person.name)}</option>`).join("")}</select><button type="button" class="btn danger" data-act="remove-person">Remove</button></div>
+      <div class="pair"><select class="field" aria-label="Station to remove" data-field="remove-stn"><option value="">Remove station…</option>${data.stations.map((station) => `<option${station === ui.removeStn ? " selected" : ""}>${esc(station)}</option>`).join("")}</select><button type="button" class="btn danger" data-act="remove-station">Remove</button></div>
+      ${statusLine(ui.teamMsg, ui.teamTone)}
+    </section>
+  </div>`;
+}
+
+function sessionButton(person, index) {
+  const active = person.reg && !person.offline;
+  const sessions = person.trainSessions || 0;
+  const label = active && sessions > 0 ? `T${sessions}` : "In";
+  const cls = active ? (sessions > 0 ? "block" : "on") : "";
+  return `<button type="button" class="mini ${cls}" data-act="sessions" data-i="${index}" aria-pressed="${active}" aria-label="${label === "In" ? "In" : `Training ${sessions} session${sessions === 1 ? "" : "s"}`}">${label}</button>`;
+}
+
+function flagButton(index, key, on, label, kind) {
+  return `<button type="button" class="mini ${on ? kind : ""}" data-act="flag" data-i="${index}" data-k="${key}" aria-pressed="${on}">${label}</button>`;
+}
+
+function mark(kind) {
+  if (kind === "qualified") return `<span class="mark good">${icon("check")}</span>`;
+  if (kind === "training") return `<span class="mark warn">T</span>`;
+  if (kind === "blocked") return `<span class="mark bad">${icon("x")}</span>`;
+  return `<span class="mark empty"></span>`;
+}
+
+function viewCover() {
+  const rows = se(state.data);
+  const short = rows.filter((row) => row.risk !== "ok");
+  const ok = rows.filter((row) => row.risk === "ok");
+  const inn = ce(state.data).length;
+  const labels = { ok: "OK", tight: "Tight", critical: "1 person", none: "No cover" };
+  const list = (items) => items.map((row) => `<li class="card">
+    <div class="row"><b class="station">${esc(row.station)}</b><span class="muted">${row.active} active · ${row.total} qualified</span><span class="pill ${row.risk}">${labels[row.risk]}</span></div>
+    <p class="muted">${row.names.length ? esc(row.names.join(", ")) : "Nobody qualified and in."}</p>
+  </li>`).join("");
+  return `<div class="stack">
+    <section class="card"><h2>Station coverage</h2><p class="muted">Active means in today, not offline, and qualified. ${inn} people in. Short stations are listed first.</p></section>
+    ${short.length === 0 ? `<section class="card"><p class="muted">Every station has at least four people in.</p></section>` : `<section class="stack tight"><h2 class="warn-text">Short · ${short.length}</h2><ul class="stack tight">${list(short)}</ul></section>`}
+    ${ok.length ? `<section class="stack tight"><h2>Comfortable · ${ok.length}</h2><ul class="stack tight">${list(ok)}</ul></section>` : ""}
+  </div>`;
+}
+
+function viewTrain() {
+  const data = state.data;
+  const report = ot(data);
+  const hidden = Object.keys(data.dismissedSuggestions || {}).length;
+  const thin = report.thin.length === 0
+    ? `<p class="muted">Every station has at least three people on the team.</p>`
+    : `<ul class="stack tight">${report.thin.map((row) => `<li><div class="row spread"><b class="station">${esc(row.station)}</b><span class="warn-text">${row.active} in · needs ${3 - row.active} more</span></div><p class="muted">${row.names.length ? esc(row.names.join(", ")) : "Nobody on the team is qualified."}</p></li>`).join("")}</ul>`;
+  const suggestions = report.suggestions.length === 0
+    ? `<section class="card"><p class="muted">Nothing to add. People in today already have enough skills for a 3-job day, and the short stations are covered.</p></section>`
+    : report.suggestions.map((item) => `<section class="card">
+      <div class="row spread"><b>Train ${esc(item.operator)} <span class="muted">on</span> ${esc(item.station)}</b>${item.alreadyTraining ? `<span class="pill tight">Training</span>` : ""}</div>
+      <p class="fine">${item.skillsNow} skill${item.skillsNow === 1 ? "" : "s"}${item.openShifts < 3 ? ` · ${item.openShifts} shift${item.openShifts === 1 ? "" : "s"} open` : " · all shifts open"}</p>
+      <p class="muted">${esc(item.why)}</p>
+      <div class="grid2 gap">
+        <button type="button" class="btn primary" data-act="train-go" data-name="${esc(item.operator)}" data-station="${esc(item.station)}" data-training="${item.alreadyTraining ? "1" : "0"}">${item.alreadyTraining ? "Mark qualified" : "Start training"}</button>
+        <button type="button" class="btn" data-act="train-hide" data-name="${esc(item.operator)}" data-station="${esc(item.station)}">Hide</button>
+      </div>
+    </section>`).join("");
+  return `<div class="stack">
+    <section class="card"><h2>Training</h2><p class="muted">Worked out from active qualifications, the green ticks. Someone marked Off still counts. A red cross does not. N Al Shammari and L. Smith are left out.</p></section>
+    <div class="stats">
+      ${stat(`${report.readyForThree}/${report.inToday}`, "Can do 3 jobs", report.readyForThree === report.inToday && report.inToday > 0 ? "good" : "warn")}
+      ${stat(String(report.needSkills), "Need another skill", report.needSkills ? "warn" : "good")}
+      ${stat(String(report.thin.length), "Stations under 3", report.thin.length ? "warn" : "good")}
+      ${stat(String(report.shiftCapped.length), "Blocked off a shift")}
+    </div>
+    ${report.shiftCapped.length ? `<section class="card"><h2>Shift blocks</h2><p class="muted">Training will not get these people to three jobs until the block is cleared.</p><ul class="stack tight">${report.shiftCapped.map((row) => `<li><b>${esc(row.name)}</b> <span class="muted">off ${esc(row.blocked.join(", "))}</span></li>`).join("")}</ul></section>` : ""}
+    <section class="card"><h2>Stations that need people</h2>${thin}</section>
+    <div class="stack" data-testid="train-list"><h2>Training suggestions</h2><p class="muted">Operators to train on a job so more people can rotate across three stations, and short jobs are not the same name all day.</p>${suggestions}</div>
+    ${hidden ? `<button type="button" class="btn block" data-act="train-show">Show ${hidden} hidden</button>` : ""}
+  </div>`;
+}
+
+function viewWeek() {
+  const data = state.data;
+  const summary = re(data);
+  const archiveKeys = Object.keys(data.weekArchive || {}).sort().reverse();
+  let body;
+  if (!summary.solved.length) {
+    body = `<section class="card"><p class="muted">No rotas yet. Solve Monday to Friday on the Rota page.</p></section>`;
+  } else {
+    let known = 0;
+    let done = 0;
+    const people = Object.keys(summary.worked).map((name) => {
+      const person = data.operators.find((item) => item.name === name);
+      const skills = person ? Object.keys(person.quals).filter((station) => person.quals[station] && !(person.blocked && person.blocked[station])) : [];
+      const used = (summary.worked[name] || []).filter((station) => skills.includes(station));
+      const listed = skills.map((station) => ({ station, times: (summary.counts[name] && summary.counts[name][station]) || 0 }))
+        .sort((a, b) => b.times - a.times || a.station.localeCompare(b.station));
+      known += skills.length;
+      done += used.length;
+      return {
+        name,
+        k: skills.length,
+        c: used.length,
+        pct: skills.length ? Math.round((used.length / skills.length) * 100) : 0,
+        listed,
+      };
+    }).sort((a, b) => data.operators.findIndex((person) => person.name === a.name) - data.operators.findIndex((person) => person.name === b.name));
+    const fair = known ? Math.round((done / known) * 100) : 0;
+    const days = S.map((id) => `<div class="day ${summary.solved.includes(id) ? "on" : "idle"}">${esc(N(id).slice(0, 3))}</div>`).join("");
+    const rows = people.map((person) => {
+      const open = ui.weekOpen === person.name;
+      const detail = open ? `<tr class="detail"><td colspan="4">${person.listed.length === 0 ? `<p class="muted">No jobs listed.</p>` : `<ul class="jobs">${person.listed.map((job) => `<li><span>${esc(job.station)}</span><span class="${job.times === 0 ? "muted" : ""}">${job.times === 0 ? "Not been on" : `${job.times} time${job.times === 1 ? "" : "s"}`}</span></li>`).join("")}</ul>`}</td></tr>` : "";
+      return `<tr><td><button type="button" class="link" data-act="week-name" data-name="${esc(person.name)}" aria-expanded="${open}">${esc(person.name)}</button></td><td>${person.k}</td><td>${person.c}</td><td class="${person.pct >= 70 ? "good" : person.k ? "warn" : "muted"}">${person.k ? `${person.pct}%` : "—"}</td></tr>${detail}`;
+    }).join("");
+    body = `<div class="stats half">${stat(`${fair}%`, "Weekly fairness", fair >= 70 ? "good" : "warn")}${stat(`${summary.solved.length}/5`, "Days solved")}</div>
+      <div class="days">${days}</div>
+      <div class="scroll"><table class="week"><thead><tr><th>Operator</th><th>Known</th><th>Done</th><th>%</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
+  const archive = archiveKeys.length ? `<section class="card"><h2>Archived weeks</h2><ul class="stack tight">${archiveKeys.map((key) => {
+    const item = data.weekArchive[key];
+    const count = Object.keys(item.weekHistory || {}).length;
+    const [from, to] = key.split("_to_");
+    return `<li><span class="ink">${esc(ne(from))} – ${esc(ne(to))}</span> <span class="muted">· ${count} day${count === 1 ? "" : "s"}</span></li>`;
+  }).join("")}</ul></section>` : "";
+  return `<div class="stack"><section class="card"><h2>This week</h2><p class="muted">Fairness from the Monday to Friday rotas. Nothing needs confirming.</p></section>${body}${archive}</div>`;
+}
+
+function viewData() {
+  const paste = ui.dataPasteOpen ? `<div class="stack tight">
+    <p class="muted">Header row must include Name, then Reg, Offline, 1st, 2nd, 3rd, then station codes. Y means yes.</p>
+    <textarea class="field area" data-focus="data-paste" data-field="data-paste" placeholder="Paste tab-separated Excel here">${esc(ui.dataPaste)}</textarea>
+    <button type="button" class="btn primary block" data-act="load-paste">Load pasted data</button>
+  </div>` : "";
+  return `<div class="stack">
+    <section class="card">
+      <h2>Save / load</h2>
+      <p class="muted">Who is in, skills, pins, and the last rota save on this phone as you change them. Save a file as well — phones sometimes clear site data.</p>
+      <button type="button" class="btn primary block" data-act="save-file">Save data file</button>
+      <button type="button" class="btn block" data-act="load-file">Load data file</button>
+      <input id="file-input" type="file" accept="application/json,.json" hidden>
+      <button type="button" class="btn block" data-act="toggle-paste">Paste from Excel</button>
+      ${paste}
+      ${statusLine(ui.dataMsg, ui.dataTone)}
+    </section>
+    <section class="card">
+      <h2>How to use</h2>
+      <ol class="help">
+        <li>Who is in — set who is in, who is off, and any S1–S3 blocks. This list is the same for every day. You change it yourself before each solve.</li>
+        <li>In cycles to T1, T2, then T3. That is how many sessions they train, not which session. Solve picks the sessions. The trainee is not left on the job. A qualified person still covers it, and the training job shows at the top and in the spare box.</li>
+        <li>Rota — tap Mon to Fri, then Solve rotation. That fills only the day you selected. Change Who is in, tap the next day, and solve again. You can build the whole week in one sitting.</li>
+        <li>Solve aims for three different jobs and still covers every station. Later days look at the week, but it will not spoil the day’s rotation just to move one person onto a new job.</li>
+        <li>Tap a slot to pin a name, or copy the operator sheet in Excel and paste it onto the rota. A star is a pin. Reshuffle tries another mix. Back returns to the previous one.</li>
+        <li>Week shows fairness from the Monday to Friday rotas. You do not need to confirm a day. Tap a name to see their jobs, most sessions first, then the jobs they have not been on.</li>
+        <li>Cover shows thin stations. Train suggests who to teach so more people can rotate. Changes save on this phone. Save a file if you want a backup. Nothing is uploaded.</li>
+      </ol>
+      <p class="muted gap">On iPhone: Share, then Add to Home Screen. On Android: the browser menu, then Add to Home screen. It then opens full screen, like an app.</p>
+      <p class="muted">This page uses the bundled team from 25 Aug 2026, including training marks, exclusions, and the week archive. After you change it, this browser keeps your copy.</p>
+    </section>
+    <button type="button" class="btn danger block" data-act="reset">${ui.resetArmed ? "Tap again to reset" : "Reset to bundled team"}</button>
+  </div>`;
+}
+
+function teamNote(text, tone) {
+  ui.teamMsg = text;
+  ui.teamTone = tone || "";
+}
+
+function dataNote(text, tone) {
+  ui.dataMsg = text;
+  ui.dataTone = tone || "";
+}
+
+function onClick(event) {
+  const button = event.target.closest("[data-act]");
+  if (!button) return;
+  const act = button.dataset.act;
+  if (act === "stop") {
+    event.stopPropagation();
+    return;
+  }
+  if (act === "tab") {
+    state.tab = button.dataset.tab;
+    ui.picker = null;
+    ui.confirmOpen = false;
+    render();
+    return;
+  }
+  if (act === "dismiss-hint") {
+    try { localStorage.setItem(KEY_HINT, "0"); } catch { /* ignore */ }
+    state.hintOn = false;
+    render();
+    return;
+  }
+  if (act === "day") {
+    selectDay(button.dataset.day);
+    return;
+  }
+  if (act === "solve") {
+    if (!ui.solving) runSolve();
+    return;
+  }
+  if (act === "back") {
+    goBack();
+    return;
+  }
+  if (act === "clear") {
+    clearResult();
+    return;
+  }
+  if (act === "slot") {
+    ui.picker = { station: button.dataset.station, shift: Number(button.dataset.shift) };
+    ui.confirmOpen = false;
+    render();
+    return;
+  }
+  if (act === "close-picker") {
+    ui.picker = null;
+    render();
+    return;
+  }
+  if (act === "pin") {
+    pinPerson(button.dataset.name);
+    return;
+  }
+  if (act === "clear-slot") {
+    clearSlot();
+    return;
+  }
+  if (act === "open-confirm") {
+    ui.confirmDate = I(new Date());
+    ui.confirmOpen = true;
+    ui.picker = null;
+    render();
+    return;
+  }
+  if (act === "close-confirm") {
+    ui.confirmOpen = false;
+    render();
+    return;
+  }
+  if (act === "confirm") {
+    confirmRotation();
+    return;
+  }
+  if (act === "copy-excel") {
+    const board = boardNow();
+    copyText(ue(board.stations, board.result), "Copied — paste into Excel beside the station codes.", "Copy blocked. Select the table instead.");
+    return;
+  }
+  if (act === "copy-message") {
+    const board = boardNow();
+    copyText(de(board.stations, board.result, board.stats.extra), "Copied — paste into a message.", "Copy blocked. Select the table instead.");
+    return;
+  }
+  if (act === "team-view") {
+    ui.teamView = button.dataset.view;
+    render();
+    return;
+  }
+  if (act === "sessions") {
+    const index = Number(button.dataset.i);
+    update((data) => {
+      const person = data.operators[index];
+      if (!person.reg || person.offline) {
+        person.reg = true;
+        person.offline = false;
+        person.trainSessions = 0;
+      } else if (person.trainSessions === 1) person.trainSessions = 2;
+      else if (person.trainSessions === 2) person.trainSessions = 3;
+      else if (person.trainSessions === 3) person.trainSessions = 0;
+      else person.trainSessions = 1;
+    });
+    return;
+  }
+  if (act === "flag") {
+    const index = Number(button.dataset.i);
+    const key = button.dataset.k;
+    update((data) => {
+      data.operators[index][key] = !data.operators[index][key];
+    });
+    return;
+  }
+  if (act === "skill") {
+    const index = Number(button.dataset.i);
+    const station = button.dataset.station;
+    update((data) => {
+      ee(data.operators[index], station);
+    });
+    return;
+  }
+  if (act === "add-person") {
+    const name = ui.newPerson.trim();
+    if (!name) {
+      teamNote("Type a name first.", "err");
+      render();
+      return;
+    }
+    if (state.data.operators.some((person) => person.name.toLowerCase() === name.toLowerCase())) {
+      teamNote("That name is already on the team.", "err");
+      render();
+      return;
+    }
+    update((data) => {
+      const quals = {};
+      for (const station of data.stations) quals[station] = false;
+      data.operators.push({
+        name,
+        reg: true,
+        offline: false,
+        b1: false,
+        b2: false,
+        b3: false,
+        quals,
+        blocked: {},
+        training: {},
+        trainSessions: 0,
+      });
+    });
+    ui.newPerson = "";
+    teamNote(`${name} added. Set their skills in the matrix.`, "ok");
+    render();
+    return;
+  }
+  if (act === "add-station") {
+    const code = ui.newStation.trim();
+    if (!code) {
+      teamNote("Type a station code first.", "err");
+      render();
+      return;
+    }
+    if (state.data.stations.includes(code)) {
+      teamNote("That station is already on the list.", "err");
+      render();
+      return;
+    }
+    update((data) => {
+      data.stations.push(code);
+      for (const person of data.operators) person.quals[code] = false;
+    });
+    ui.newStation = "";
+    teamNote(`Station ${code} added.`, "ok");
+    render();
+    return;
+  }
+  if (act === "remove-person") {
+    const index = Number(ui.removeOp);
+    if (!Number.isInteger(index) || !state.data.operators[index]) {
+      teamNote("Choose an operator to remove.", "err");
+      render();
+      return;
+    }
+    const name = state.data.operators[index].name;
+    update((data) => {
+      data.operators.splice(index, 1);
+      data.pins = data.pins.filter((pin) => pin.operator !== name);
+    });
+    ui.removeOp = "";
+    teamNote(`Removed ${name}.`, "ok");
+    render();
+    return;
+  }
+  if (act === "remove-station") {
+    if (!ui.removeStn) {
+      teamNote("Choose a station to remove.", "err");
+      render();
+      return;
+    }
+    const code = ui.removeStn;
+    update((data) => {
+      data.stations = data.stations.filter((station) => station !== code);
+      data.pins = data.pins.filter((pin) => pin.station !== code);
+    });
+    ui.removeStn = "";
+    teamNote("Station removed.", "ok");
+    render();
+    return;
+  }
+  if (act === "train-go") {
+    const name = button.dataset.name;
+    const station = button.dataset.station;
+    const training = button.dataset.training === "1";
+    update((data) => {
+      const person = data.operators.find((item) => item.name === name);
+      if (!person) return;
+      if (training) {
+        person.quals[station] = true;
+        person.training[station] = false;
+        person.blocked[station] = false;
+      } else person.training[station] = true;
+    });
+    return;
+  }
+  if (act === "train-hide") {
+    const key = `${button.dataset.name}|${button.dataset.station}`;
+    update((data) => {
+      data.dismissedSuggestions[key] = true;
+    });
+    return;
+  }
+  if (act === "train-show") {
+    update((data) => {
+      data.dismissedSuggestions = {};
+    });
+    return;
+  }
+  if (act === "week-name") {
+    ui.weekOpen = ui.weekOpen === button.dataset.name ? null : button.dataset.name;
+    render();
+    return;
+  }
+  if (act === "save-file") {
+    const blob = new Blob([JSON.stringify(state.data, null, 2)], { type: "application/json" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `rotation_data_${I(new Date())}.json`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    dataNote("Save dialog opened.", "ok");
+    render();
+    return;
+  }
+  if (act === "load-file") {
+    document.getElementById("file-input").click();
+    return;
+  }
+  if (act === "toggle-paste") {
+    ui.dataPasteOpen = !ui.dataPasteOpen;
+    render();
+    return;
+  }
+  if (act === "load-paste") {
+    try {
+      const parsed = le(ui.dataPaste);
+      const next = ze();
+      next.operators = parsed.operators;
+      next.stations = parsed.stations;
+      next.weekHistory = state.data.weekHistory;
+      next.weekArchive = state.data.weekArchive;
+      next.avoidYesterdayEnabled = state.data.avoidYesterdayEnabled;
+      next.customLabels = state.data.customLabels;
+      next.dismissedSuggestions = state.data.dismissedSuggestions;
+      next.pins = [];
+      replaceData(next);
+      dataNote(`Loaded ${parsed.operators.length} operators.`, "ok");
+      render();
+    } catch (err) {
+      dataNote(err instanceof Error ? err.message : "Could not read that paste.", "err");
+      render();
+    }
+    return;
+  }
+  if (act === "reset") {
+    if (ui.resetArmed) {
+      clearTimeout(resetTimer);
+      ui.resetArmed = false;
+      resetSeed();
+      dataNote("Reset to the bundled team.", "ok");
+      render();
+    } else {
+      ui.resetArmed = true;
+      clearTimeout(resetTimer);
+      resetTimer = setTimeout(() => {
+        ui.resetArmed = false;
+        if (state.tab === "data") render();
+      }, 4000);
+      render();
+    }
+  }
+}
+
+function onChange(event) {
+  const el = event.target;
+  if (el.dataset && el.dataset.act === "avoid") {
+    update((data) => { data.avoidYesterdayEnabled = el.checked; });
+    return;
+  }
+  if (el.dataset && el.dataset.act === "issues") {
+    ui.issuesOnly = el.checked;
+    render();
+    return;
+  }
+  if (el.dataset && el.dataset.field === "remove-op") {
+    ui.removeOp = el.value;
+    return;
+  }
+  if (el.dataset && el.dataset.field === "remove-stn") {
+    ui.removeStn = el.value;
+    return;
+  }
+  if (el.id === "file-input") {
+    const file = el.files && el.files[0];
+    el.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result));
+        if (!parsed || !parsed.operators || !parsed.stations) throw new Error("Not a rotation file");
+        replaceData(parsed);
+        dataNote("Loaded.", "ok");
+        render();
+      } catch (err) {
+        dataNote(err instanceof Error ? err.message : "Could not load that file.", "err");
+        render();
+      }
+    };
+    reader.readAsText(file);
+  }
+}
+
+function onInput(event) {
+  const el = event.target;
+  const field = el.dataset && el.dataset.field;
+  if (!field) return;
+  snapFocus();
+  if (field === "team-query") {
+    ui.teamQuery = el.value;
+    render();
+    return;
+  }
+  if (field === "new-person") ui.newPerson = el.value;
+  else if (field === "new-station") ui.newStation = el.value;
+  else if (field === "data-paste") ui.dataPaste = el.value;
+  else if (field === "confirm-date") ui.confirmDate = el.value;
+  else if (field === "op-name") {
+    const index = Number(el.dataset.i);
+    if (state.data.operators[index]) state.data.operators[index].name = el.value;
+    state.storageOk = Y(state.data);
+  }
+}
+
+function onPaste(event) {
+  if (state.tab !== "rota") return;
+  if (event.target.closest("textarea, input, select")) return;
+  const text = event.clipboardData.getData("text/plain") || event.clipboardData.getData("text");
+  if (!text || !text.trim()) return;
+  const slot = event.target.closest("[data-act='slot']");
+  const inRota = slot || event.target.closest("[data-paste='rota']");
+  if (!inRota && !ui.picker) return;
+  event.preventDefault();
+  if (slot) pasteRota(text, slot.dataset.station, Number(slot.dataset.shift));
+  else if (ui.picker && !text.includes("\t") && !text.includes("\n") && !text.includes("·")) pasteRota(text, ui.picker.station, ui.picker.shift);
+  else pasteRota(text, "", 0);
+}
+
+async function copyText(text, ok, fail) {
+  try {
+    await navigator.clipboard.writeText(text);
+    setMsg(ok, "ok");
+  } catch {
+    setMsg(fail, "err");
+  }
+  render();
+}
+
+document.addEventListener("click", onClick);
+document.addEventListener("change", onChange);
+document.addEventListener("input", onInput);
+document.addEventListener("paste", onPaste);
+document.addEventListener("focusout", (event) => {
+  const el = event.target;
+  if (!el.dataset || el.dataset.field !== "op-name") return;
+  const index = Number(el.dataset.i);
+  const person = state.data.operators[index];
+  if (!person) return;
+  const prev = person.name;
+  const name = prev.trim() || "Operator";
+  if (prev === name) return;
+  update((data) => {
+    const row = data.operators[index];
+    if (!row) return;
+    if (prev !== name) {
+      for (const pin of data.pins) if (pin.operator === prev) pin.operator = name;
+    }
+    row.name = name;
+  });
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    if (ui.picker || ui.confirmOpen) {
+      ui.picker = null;
+      ui.confirmOpen = false;
+      render();
+    }
+  }
+});
+
+hydrate();
+
+</script>
+</body>
+</html>
