@@ -73,6 +73,7 @@ b { font-weight: 600; }
 .btn.primary { border-color: var(--action); background: var(--action-dim); color: var(--action-fg); }
 .btn.danger { border-color: var(--bad); background: var(--bad-dim); color: var(--bad-fg); }
 .btn.block { width: 100%; }
+.dot { display: inline-block; width: 4px; height: 4px; margin-right: 4px; border-radius: 999px; background: var(--muted); vertical-align: middle; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .span2 { grid-column: span 2; }
 .days { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
@@ -1137,6 +1138,164 @@ function je(e, t, n, r, i, a, o) {
     }
 }
 
+function We(e, t, n, r = []) {
+    let i = e.filter(e => e.reg && !e.offline),
+        a = {};
+    for (let e of i) a[e.name] = e;
+    let o = {
+            1: new Map,
+            2: new Map,
+            3: new Map
+        },
+        s = {
+            1: new Set,
+            2: new Set,
+            3: new Set
+        },
+        c = {
+            1: new Map,
+            2: new Map,
+            3: new Map
+        };
+    for (let e of [1, 2, 3]) {
+        for (let n of r || []) {
+            if (!n?.operator || !n.station || !n.shifts?.includes(e) || !t.includes(n.station)) continue;
+            let r = a[n.operator];
+            r && A(r, n.station) && !k(r, e) && c[e].set(n.station, n.operator)
+        }
+        for (let r of t) {
+            let t = c[e].get(r);
+            if (t && !s[e].has(t)) {
+                o[e].set(r, t), s[e].add(t);
+                continue
+            }
+            let i = D(n[r], e),
+                l = i ? a[i] : void 0;
+            l && A(l, r) && !k(l, e) && !s[e].has(l.name) && (o[e].set(r, l.name), s[e].add(l.name))
+        }
+    }
+
+    function l(e) {
+        let t = new Set;
+        for (let n of [1, 2, 3])
+            for (let [r, i] of o[n]) i === e && t.add(r);
+        return t
+    }
+    for (let e of [1, 2, 3]) {
+        function r(t, n) {
+            let r = a[t];
+            if (!r || O(r) <= 1) return 0;
+            let i = e === 1 ? null : e === 2 ? 1 : 2;
+            return i && o[i].get(n) === t ? 8 : 0
+        }
+
+        function u(e, t) {
+            let n = l(e);
+            return (n.has(t) ? 3 : n.size >= 2 ? 0 : n.size === 1 ? 1 : 2) * 10 + n.size + r(e, t)
+        }
+
+        function d(t, n) {
+            let r = i.filter(r => r.name !== n && !s[e].has(r.name) && A(r, t) && !k(r, e));
+            return r.sort((e, n) => u(e.name, t) - u(n.name, t) || e.name.localeCompare(n.name)), r[0]?.name ?? null
+        }
+        let f = t.filter(t => !!D(n[t], e) && !o[e].has(t)).sort((t, n) => i.filter(n => A(n, t) && !k(n, e)).length - i.filter(t => A(t, n) && !k(t, e)).length);
+
+        function p(t) {
+            for (let [n, r] of o[e])
+                if (r === t) return n;
+            return null
+        }
+
+        function m(e, t, n) {
+            let i = l(e),
+                a = new Set(i);
+            return n && a.delete(n), a.add(t), (i.size >= 3 && a.size < 3 ? 40 : 0) + (i.size < 3 && a.size >= 3 ? -4 : 0) + r(e, t)
+        }
+
+        function h(t) {
+            let n = new Map,
+                r = new Map([
+                    [t, 0]
+                ]),
+                a = [{
+                    station: t,
+                    cost: 0
+                }],
+                l = null;
+            for (; a.length > 0;) {
+                a.sort((e, t) => e.cost - t.cost);
+                let t = a.shift();
+                if (t.cost !== r.get(t.station) || l && t.cost >= l.cost) continue;
+                let o = i.filter(n => A(n, t.station) && !k(n, e));
+                for (let i of o) {
+                    let o = p(i.name);
+                    if (o === t.station || o && c[e].get(o) === i.name) continue;
+                    let s = m(i.name, t.station, o);
+                    if (!o) {
+                        let e = t.cost + 1 + s;
+                        if (l && e >= l.cost) continue;
+                        let r = [{
+                                station: t.station,
+                                person: i.name
+                            }],
+                            a = t.station,
+                            o = new Set;
+                        for (; n.has(a) && !o.has(a);) {
+                            o.add(a);
+                            let e = n.get(a);
+                            r.push({
+                                station: e.fills,
+                                person: e.person
+                            }), a = e.fills
+                        }
+                        l = {
+                            cost: e,
+                            moves: r
+                        };
+                        continue
+                    }
+                    let u = t.cost + 10 + s;
+                    if (l && u >= l.cost) continue;
+                    let d = r.get(o);
+                    d !== void 0 && d <= u || (r.set(o, u), n.set(o, {
+                        person: i.name,
+                        fills: t.station
+                    }), a.push({
+                        station: o,
+                        cost: u
+                    }))
+                }
+            }
+            if (l) {
+                for (let t of l.moves) {
+                    let n = p(t.person);
+                    n && (o[e].delete(n), s[e].delete(t.person))
+                }
+                for (let t of l.moves) {
+                    let n = p(t.person);
+                    n && (o[e].delete(n), s[e].delete(t.person)), o[e].set(t.station, t.person), s[e].add(t.person)
+                }
+            }
+        }
+        for (let e of f) h(e);
+        for (let n of t) {
+            if (o[e].has(n)) continue;
+            let t = d(n, null);
+            t && (o[e].set(n, t), s[e].add(t))
+        }
+    }
+    let u = {};
+    for (let e of t) u[e] = {};
+    for (let e of [1, 2, 3])
+        for (let [t, n] of o[e]) u[t][e] = n;
+    return {
+        result: u,
+        stations: t.slice(),
+        available: i,
+        score: 0
+    }
+}
+
 function J(e, t, n) {
     let r = t.reduce((t, n) => t + [1, 2, 3].filter(t => D(e[n], t)).length, 0),
         i = t.length * 3,
@@ -1740,6 +1899,88 @@ async function runSolve() {
   }
 }
 
+async function runCover() {
+  const current = state.solve;
+  if (!current) {
+    setMsg("Solve a rotation first.", "");
+    render();
+    return;
+  }
+  const token = ++solveGen;
+  ui.solving = true;
+  setMsg("Covering the gaps…", "busy");
+  render();
+  await new Promise((r) => setTimeout(r, 30));
+  try {
+    const data = state.data;
+    const train = K(data.operators, data.stations, data.pins);
+    const ops = data.operators.map((person) => {
+      const shifts = train.seats.filter((seat) => seat.name === person.name).map((seat) => seat.shift);
+      if (!shifts.length) return person;
+      return {
+        ...person,
+        b1: person.b1 || shifts.includes(1),
+        b2: person.b2 || shifts.includes(2),
+        b3: person.b3 || shifts.includes(3),
+      };
+    });
+    const solved = We(ops, data.stations, current.result, data.pins);
+    if (token !== solveGen) return;
+    let kept = 0;
+    let placed = 0;
+    let moved = 0;
+    const changed = [];
+    for (const station of current.stations) {
+      for (const shift of [1, 2, 3]) {
+        const before = D(current.result[station], shift);
+        const after = D(solved.result[station], shift);
+        if (before !== after) changed.push(`${station}|${shift}`);
+        if (before && before === after) kept++;
+        else if (after) {
+          const cameFrom = current.stations.some((other) => other !== station && D(current.result[other], shift) === after);
+          if (cameFrom) moved++;
+          else placed++;
+        }
+      }
+    }
+    remember();
+    const next = structuredClone(state.data);
+    next.pins = next.pins.filter((pin) => {
+      const person = next.operators.find((op) => op.name === pin.operator);
+      return !!person && person.reg && !person.offline;
+    });
+    state.data = next;
+    if (token !== solveGen) return;
+    const stats = J(solved.result, solved.stations, solved.available);
+    ui.picker = null;
+    const gaps = stats.gaps.length;
+    setMsg(
+      [
+        `Kept ${kept} seat${kept === 1 ? "" : "s"}.`,
+        placed ? `Put ${placed} free ${placed === 1 ? "person" : "people"} on the open jobs.` : "",
+        moved ? `Moved ${moved} so a gap could be covered.` : "",
+        gaps ? `${gaps} slot${gaps === 1 ? "" : "s"} still open.` : "",
+        train.warning,
+      ].filter(Boolean).join(" "),
+      train.warning || gaps ? "err" : "ok",
+    );
+    ui.solving = false;
+    setSolve({
+      ...solved,
+      stats,
+      training: train.seats,
+      trainingKey: ye(data.operators),
+      trainingWarning: train.warning,
+      changed,
+    });
+  } catch (err) {
+    if (token !== solveGen) return;
+    ui.solving = false;
+    setMsg(err instanceof Error ? err.message : "Could not cover that.", "err");
+    render();
+  }
+}
+
 function applyGrid(grid, available, message, tone) {
   const current = boardNow();
   setMsg(message, tone);
@@ -1978,12 +2219,13 @@ function viewRota() {
       board.stats.stuckMulti.length ? `<p class="warn-text">Multi-skill but only one station: ${esc(board.stats.stuckMulti.join(", "))}</p>` : ""
     }`;
   }
+  const changed = new Set(state.solve && state.solve.changed ? state.solve.changed : []);
   const rows = board.stations.filter((station) => {
     if (!ui.issuesOnly) return true;
     const names = [1, 2, 3].map((shift) => D(board.result[station], shift) || "");
     const counts = {};
     names.forEach((name) => { if (name) counts[name] = (counts[name] || 0) + 1; });
-    return Object.values(counts).some((n) => n >= 2) || names.some((name) => !name);
+    return Object.values(counts).some((n) => n >= 2) || names.some((name) => !name) || [1, 2, 3].some((shift) => changed.has(`${station}|${shift}`));
   });
   const bodyRows = rows.map((station) => {
     const names = [1, 2, 3].map((shift) => D(board.result[station], shift) || "");
@@ -1991,9 +2233,12 @@ function viewRota() {
     names.forEach((name) => { if (name) counts[name] = (counts[name] || 0) + 1; });
     const cells = names.map((name, index) => {
       const shift = index + 1;
+      const changedCell = changed.has(`${station}|${shift}`);
       const pinned = !!name && data.pins.some((pin) => pin.operator === name && pin.station === station && pin.shifts.includes(shift));
       const tone = !name ? "empty" : counts[name] >= 3 ? "bad" : counts[name] === 2 ? "warn" : "";
-      return `<td class="slot ${tone}"><button type="button" class="slot-btn" data-act="slot" data-station="${esc(station)}" data-shift="${shift}" aria-label="${esc(station)} shift ${shift}, ${esc(name || "empty")}${pinned ? ", pinned" : ""}. Paste or change">${esc(name ? name + (pinned ? " *" : "") : "—")}</button></td>`;
+      const mark = changedCell ? `<span class="dot" aria-hidden="true"></span>` : "";
+      const shown = name ? `${mark}${esc(name)}${pinned ? " *" : ""}` : (changedCell ? mark : "—");
+      return `<td class="slot ${tone}"><button type="button" class="slot-btn" data-act="slot" data-station="${esc(station)}" data-shift="${shift}" aria-label="${esc(station)} shift ${shift}, ${esc(name || "empty")}${pinned ? ", pinned" : ""}${changedCell ? ", changed" : ""}. Paste or change">${shown}</button></td>`;
     }).join("");
     return `<tr><th>${esc(station)}</th>${cells}</tr>`;
   }).join("");
@@ -2002,6 +2247,7 @@ function viewRota() {
     <div class="days">${days}</div>
     ${trainBox}
     <button type="button" class="btn primary block" data-testid="solve" data-act="solve" ${ui.solving ? "disabled" : ""}>${ui.solving ? "Solving…" : "Solve rotation"}</button>
+    <button type="button" class="btn block" data-testid="repair" data-act="cover" ${ui.solving || !state.solve ? "disabled" : ""}>Cover absence</button>
     <div class="grid2">
       <button type="button" class="btn" data-act="solve" ${ui.solving ? "disabled" : ""}>Reshuffle</button>
       <button type="button" class="btn" data-testid="back" data-act="back" ${ui.solving || history.length === 0 ? "disabled" : ""}>${history.length ? `Back (${history.length})` : "Back"}</button>
@@ -2016,6 +2262,7 @@ function viewRota() {
         <h2>Today's rota</h2>
         <label class="check small"><input type="checkbox" data-act="issues" ${ui.issuesOnly ? "checked" : ""}> Issues only</label>
       </div>
+      ${changed.size ? `<p class="fine">A small dot marks a name that changed.</p>` : ""}
       <div class="scroll" data-paste="rota">
         <table class="rota" data-testid="result-table">
           <thead><tr><th>Stn</th><th>S1</th><th>S2</th><th>S3</th></tr></thead>
@@ -2262,6 +2509,7 @@ function viewData() {
         <li>Who is in — set who is in, who is off, and any S1–S3 blocks. This list is the same for every day. You change it yourself before each solve.</li>
         <li>In cycles to T1, T2, then T3. That is how many sessions they train, not which session. Solve picks the sessions. The trainee is not left on the job. A qualified person still covers it, and the training job shows at the top and in the spare box.</li>
         <li>Rota — tap Mon to Fri, then Solve rotation. That fills only the day you selected. Change Who is in, tap the next day, and solve again. You can build the whole week in one sitting.</li>
+        <li>If someone calls in sick, mark them Off and clear any training. Then tap Cover absence. It only moves people who have to move to cover every job, and it keeps three-job days where it can. A small dot marks a name that changed.</li>
         <li>Solve aims for three different jobs and still covers every station. Later days look at the week, but it will not spoil the day’s rotation just to move one person onto a new job.</li>
         <li>Tap a slot to pin a name, or copy the operator sheet in Excel and paste it onto the rota. A star is a pin. Reshuffle tries another mix. Back returns to the previous one.</li>
         <li>Week shows fairness from the Monday to Friday rotas. You do not need to confirm a day. Tap a name to see their jobs, most sessions first, then the jobs they have not been on.</li>
@@ -2311,6 +2559,10 @@ function onClick(event) {
   }
   if (act === "solve") {
     if (!ui.solving) runSolve();
+    return;
+  }
+  if (act === "cover") {
+    if (!ui.solving) runCover();
     return;
   }
   if (act === "back") {
