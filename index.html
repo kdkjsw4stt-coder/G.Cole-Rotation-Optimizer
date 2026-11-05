@@ -102,7 +102,7 @@ b { font-weight: 600; }
 .row { display: flex; align-items: center; gap: 8px; }
 .row.spread { justify-content: space-between; align-items: baseline; padding: 12px 12px 0; }
 .card > .row.spread { padding: 0; margin-bottom: 8px; }
-.scroll { max-height: 50vh; overflow: auto; }
+.scroll { max-height: 50vh; overflow: auto; overflow-anchor: none; -webkit-overflow-scrolling: touch; }
 .matrix-scroll { max-height: 62vh; border: 1px solid var(--line); border-radius: 12px; }
 table { border-collapse: collapse; width: 100%; }
 .rota { text-align: left; font-size: 12px; }
@@ -125,7 +125,7 @@ table { border-collapse: collapse; width: 100%; }
 .matrix thead .sticky { z-index: 3; background: var(--panel-2); }
 .name { width: 140px; background: transparent; border: 0; color: var(--ink); font: inherit; padding: 8px; }
 .name:focus { outline: none; }
-.cell { width: 44px; height: 44px; display: grid; place-items: center; background: transparent; border: 0; }
+.cell { width: 44px; height: 44px; display: grid; place-items: center; background: transparent; border: 0; touch-action: manipulation; }
 .mark { width: 24px; height: 24px; border-radius: 4px; display: grid; place-items: center; }
 .mark .ico { width: 14px; height: 14px; }
 .mark.empty { border: 1px solid var(--line); background: var(--panel-2); }
@@ -2665,21 +2665,7 @@ function onClick(event) {
     return;
   }
   if (act === "skill") {
-    const index = Number(button.dataset.i);
-    const station = button.dataset.station;
-    const person = state.data.operators[index];
-    if (!person || !station) return;
-    ee(person, station);
-    const ok = Y(state.data);
-    const kind = j(person, station);
-    if (ok === state.storageOk) {
-      state.storageOk = ok;
-      button.innerHTML = mark(kind);
-      button.setAttribute("aria-label", `${person.name} ${station}: ${kind}`);
-      return;
-    }
-    state.storageOk = ok;
-    render();
+    applySkill(button);
     return;
   }
   if (act === "add-person") {
@@ -2948,6 +2934,73 @@ async function copyText(text, ok, fail) {
 }
 
 document.addEventListener("click", onClick);
+document.addEventListener("mousedown", (event) => {
+  if (event.button !== 0) return;
+  if (!event.target.closest("[data-act='skill']")) return;
+  event.preventDefault();
+});
+let skillLock = 0;
+let skillTouch = null;
+function applySkill(button, hold) {
+  const now = Date.now();
+  if (now < skillLock) return;
+  skillLock = now + 400;
+  const scroller = button.closest(".scroll");
+  const top = hold ? hold.top : scroller ? scroller.scrollTop : 0;
+  const left = hold ? hold.left : scroller ? scroller.scrollLeft : 0;
+  const index = Number(button.dataset.i);
+  const station = button.dataset.station;
+  const person = state.data.operators[index];
+  if (!person || !station) return;
+  ee(person, station);
+  const ok = Y(state.data);
+  state.storageOk = ok;
+  if (!ok) {
+    render();
+    return;
+  }
+  button.innerHTML = mark(j(person, station));
+  button.setAttribute("aria-label", `${person.name} ${station}: ${j(person, station)}`);
+  if (!scroller) return;
+  const restore = () => {
+    scroller.scrollTop = top;
+    scroller.scrollLeft = left;
+  };
+  restore();
+  requestAnimationFrame(restore);
+  setTimeout(restore, 0);
+  setTimeout(restore, 50);
+  setTimeout(restore, 120);
+}
+document.addEventListener("touchstart", (event) => {
+  const cell = event.target.closest("[data-act='skill']");
+  if (!cell) {
+    skillTouch = null;
+    return;
+  }
+  const point = event.changedTouches[0];
+  const scroller = cell.closest(".scroll");
+  skillTouch = {
+    x: point.clientX,
+    y: point.clientY,
+    cell,
+    top: scroller ? scroller.scrollTop : 0,
+    left: scroller ? scroller.scrollLeft : 0,
+    moved: false,
+  };
+}, { passive: true });
+document.addEventListener("touchmove", (event) => {
+  if (!skillTouch || skillTouch.moved) return;
+  const point = event.changedTouches[0];
+  if (Math.abs(point.clientX - skillTouch.x) > 8 || Math.abs(point.clientY - skillTouch.y) > 8) skillTouch.moved = true;
+}, { passive: true });
+document.addEventListener("touchend", (event) => {
+  const held = skillTouch;
+  skillTouch = null;
+  if (!held || held.moved || !held.cell.isConnected) return;
+  event.preventDefault();
+  applySkill(held.cell, held);
+}, { passive: false, capture: true });
 document.addEventListener("change", onChange);
 document.addEventListener("input", onInput);
 document.addEventListener("paste", onPaste);
