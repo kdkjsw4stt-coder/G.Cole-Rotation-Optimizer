@@ -1697,8 +1697,26 @@ function restoreFocus() {
 
 function render() {
   const root = document.getElementById("app");
+  const winX = window.scrollX;
+  const winY = window.scrollY;
+  const saved = [...root.querySelectorAll(".scroll")].map((el) => ({
+    top: el.scrollTop,
+    left: el.scrollLeft,
+  }));
   root.innerHTML = shell();
+  const apply = () => {
+    const boxes = root.querySelectorAll(".scroll");
+    saved.forEach((pos, i) => {
+      const el = boxes[i];
+      if (!el) return;
+      el.scrollTop = pos.top;
+      el.scrollLeft = pos.left;
+    });
+    if (window.scrollX !== winX || window.scrollY !== winY) window.scrollTo(winX, winY);
+  };
+  apply();
   restoreFocus();
+  requestAnimationFrame(apply);
 }
 
 function hydrate() {
@@ -2649,9 +2667,19 @@ function onClick(event) {
   if (act === "skill") {
     const index = Number(button.dataset.i);
     const station = button.dataset.station;
-    update((data) => {
-      ee(data.operators[index], station);
-    });
+    const person = state.data.operators[index];
+    if (!person || !station) return;
+    ee(person, station);
+    const ok = Y(state.data);
+    const kind = j(person, station);
+    if (ok === state.storageOk) {
+      state.storageOk = ok;
+      button.innerHTML = mark(kind);
+      button.setAttribute("aria-label", `${person.name} ${station}: ${kind}`);
+      return;
+    }
+    state.storageOk = ok;
+    render();
     return;
   }
   if (act === "add-person") {
