@@ -125,7 +125,7 @@ table { border-collapse: collapse; width: 100%; }
 .matrix thead .sticky { z-index: 3; background: var(--panel-2); }
 .name { width: 140px; background: transparent; border: 0; color: var(--ink); font: inherit; padding: 8px; }
 .name:focus { outline: none; }
-.cell { width: 44px; height: 44px; display: grid; place-items: center; background: transparent; border: 0; touch-action: manipulation; }
+.cell { width: 44px; height: 44px; display: grid; place-items: center; background: transparent; border: 0; padding: 0; cursor: pointer; touch-action: manipulation; }
 .mark { width: 24px; height: 24px; border-radius: 4px; display: grid; place-items: center; }
 .mark .ico { width: 14px; height: 14px; }
 .mark.empty { border: 1px solid var(--line); background: var(--panel-2); }
@@ -2365,7 +2365,7 @@ function viewTeam() {
       <div class="scroll matrix-scroll"><table class="matrix"><thead><tr><th class="sticky">Name</th>${data.stations.map((station) => `<th>${esc(station)}</th>`).join("")}</tr></thead><tbody>
         ${rows.map(({ person, index }) => `<tr><td class="sticky"><input class="name" aria-label="Name for row ${index + 1}" data-focus="name-${index}" data-field="op-name" data-i="${index}" value="${esc(person.name)}"></td>${data.stations.map((station) => {
           const kind = j(person, station);
-          return `<td><button type="button" class="cell" aria-label="${esc(person.name)} ${esc(station)}: ${kind}" data-act="skill" data-i="${index}" data-station="${esc(station)}">${mark(kind)}</button></td>`;
+          return `<td><div role="button" class="cell" aria-label="${esc(person.name)} ${esc(station)}: ${kind}" data-act="skill" data-i="${index}" data-station="${esc(station)}">${mark(kind)}</div></td>`;
         }).join("")}</tr>`).join("")}
       </tbody></table></div>
       <p class="fine">Swipe sideways for every station.</p>
@@ -2665,7 +2665,8 @@ function onClick(event) {
     return;
   }
   if (act === "skill") {
-    applySkill(button);
+    const hold = skillHold && Date.now() - skillHold.at < 1000 ? skillHold : null;
+    applySkill(button, hold);
     return;
   }
   if (act === "add-person") {
@@ -2934,22 +2935,42 @@ async function copyText(text, ok, fail) {
 }
 
 document.addEventListener("click", onClick);
-document.addEventListener("mousedown", (event) => {
-  if (event.button !== 0) return;
-  if (!event.target.closest("[data-act='skill']")) return;
-  event.preventDefault();
-});
 let skillLock = 0;
-let skillTouch = null;
-function applySkill(button, hold) {
+let skillHold = null;
+function pinSkillScroll(scroller, top, left) {
+  const until = performance.now() + 500;
+  const restore = () => {
+    if (!scroller.isConnected) return;
+    if (scroller.scrollTop !== top) scroller.scrollTop = top;
+    if (scroller.scrollLeft !== left) scroller.scrollLeft = left;
+  };
+  const onScroll = () => {
+    if (performance.now() > until) {
+      scroller.removeEventListener("scroll", onScroll);
+      return;
+    }
+    restore();
+  };
+  scroller.addEventListener("scroll", onScroll);
+  const tick = () => {
+    if (performance.now() > until || !scroller.isConnected) {
+      scroller.removeEventListener("scroll", onScroll);
+      return;
+    }
+    restore();
+    requestAnimationFrame(tick);
+  };
+  tick();
+}
+function applySkill(cell, hold) {
   const now = Date.now();
   if (now < skillLock) return;
   skillLock = now + 400;
-  const scroller = button.closest(".scroll");
+  const scroller = cell.closest(".scroll");
   const top = hold ? hold.top : scroller ? scroller.scrollTop : 0;
   const left = hold ? hold.left : scroller ? scroller.scrollLeft : 0;
-  const index = Number(button.dataset.i);
-  const station = button.dataset.station;
+  const index = Number(cell.dataset.i);
+  const station = cell.dataset.station;
   const person = state.data.operators[index];
   if (!person || !station) return;
   ee(person, station);
@@ -2957,23 +2978,22 @@ function applySkill(button, hold) {
   state.storageOk = ok;
   if (!ok) {
     render();
+    if (scroller) pinSkillScroll(scroller, top, left);
     return;
   }
-  button.innerHTML = mark(j(person, station));
-  button.setAttribute("aria-label", `${person.name} ${station}: ${j(person, station)}`);
-  if (!scroller) return;
-  const restore = () => {
-    scroller.scrollTop = top;
-    scroller.scrollLeft = left;
-  };
-  restore();
-  requestAnimationFrame(restore);
-  setTimeout(restore, 0);
-  setTimeout(restore, 50);
-  setTimeout(restore, 120);
+  const kind = j(person, station);
+  cell.innerHTML = mark(kind);
+  cell.setAttribute("aria-label", `${person.name} ${station}: ${kind}`);
+  if (scroller) pinSkillScroll(scroller, top, left);
 }
+document.addEventListener("pointerdown", (event) => {
+  const cell = event.target.closest && event.target.closest("[data-act='skill']");
+  if (!cell) return;
+  const scroller = cell.closest(".scroll");
+  skillHold = scroller ? { top: scroller.scrollTop, left: scroller.scrollLeft, at: Date.now() } : null;
+}, true);
 document.addEventListener("touchstart", (event) => {
-  const cell = event.target.closest("[data-act='skill']");
+  const cell = event.target.closest && event.target.closest("[data-act='skill']");
   if (!cell) {
     skillTouch = null;
     return;
@@ -2989,6 +3009,7 @@ document.addEventListener("touchstart", (event) => {
     moved: false,
   };
 }, { passive: true });
+let skillTouch = null;
 document.addEventListener("touchmove", (event) => {
   if (!skillTouch || skillTouch.moved) return;
   const point = event.changedTouches[0];
