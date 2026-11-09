@@ -45,7 +45,7 @@ b { font-weight: 600; }
 .brand { margin: 0; text-align: right; font-size: 12px; color: var(--muted); }
 .zonebar { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 .zonebar label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
-.zonebar select { max-width: 9.5rem; background: transparent; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; font: inherit; font-size: 12px; padding: 2px 6px; }
+.zonebar select { max-width: 12rem; background: transparent; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; font: inherit; font-size: 12px; padding: 2px 6px; }
 .zone-new { min-height: 32px; border: 0; background: transparent; color: var(--muted); font-size: 12px; text-decoration: underline; text-underline-offset: 2px; padding: 0 2px; }
 .zone-add { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .zone-add .field { min-height: 40px; }
@@ -1607,7 +1607,8 @@ const KEY_HINT = "rotation-optimizer-hint";
 const KEY_ROSTER = "rotation-optimizer-roster";
 const KEY_SKILLS = "rotation-optimizer-skills";
 const KEY_ZONES = "rotation-optimizer-zones";
-const ZONE_PRESETS = [
+const HOME_ZONE = "trim-4-a";
+const ZONE_AREAS = [
   { id: "trim-1", name: "Trim 1" },
   { id: "trim-2", name: "Trim 2" },
   { id: "trim-3", name: "Trim 3" },
@@ -1621,6 +1622,10 @@ const ZONE_PRESETS = [
   { id: "chassis-6", name: "Chassis 6" },
   { id: "door-subs", name: "Door Subs" },
 ];
+const ZONE_PRESETS = ZONE_AREAS.flatMap((area) => [
+  { id: `${area.id}-a`, name: `${area.name} A shift` },
+  { id: `${area.id}-b`, name: `${area.name} B shift` },
+]);
 
 const state = {
   data: null,
@@ -1629,7 +1634,7 @@ const state = {
   hintOn: true,
   tab: "rota",
   solve: null,
-  zoneId: "trim-4",
+  zoneId: HOME_ZONE,
   zones: ZONE_PRESETS.map((zone) => ({ id: zone.id, name: zone.name })),
 };
 
@@ -1664,7 +1669,7 @@ let history = [];
 let solveGen = 0;
 let resetTimer = 0;
 let focusSnap = null;
-let zoneBook = { active: "trim-4", zones: [] };
+let zoneBook = { active: HOME_ZONE, zones: [] };
 
 function emptyZoneData() {
   return E({
@@ -1682,11 +1687,16 @@ function mergeZones(saved, fallback) {
   const used = new Set();
   const zones = [];
   for (const preset of ZONE_PRESETS) {
-    const found = saved.find((zone) => zone.id === preset.id) || saved.find((zone) => zone.name.toLowerCase() === preset.name.toLowerCase());
+    let found = saved.find((zone) => zone.id === preset.id) || saved.find((zone) => zone.name.toLowerCase() === preset.name.toLowerCase());
+    if (!found && preset.id.endsWith("-a")) {
+      const areaId = preset.id.slice(0, -2);
+      const area = ZONE_AREAS.find((item) => item.id === areaId);
+      if (area) found = saved.find((zone) => zone.id === area.id || zone.name.toLowerCase() === area.name.toLowerCase());
+    }
     if (found) {
       used.add(found.id);
       zones.push({ id: preset.id, name: preset.name, data: found.data });
-    } else if (preset.id === "trim-4") {
+    } else if (preset.id === HOME_ZONE) {
       zones.push({ id: preset.id, name: preset.name, data: fallback });
     } else {
       zones.push({ id: preset.id, name: preset.name, data: emptyZoneData() });
@@ -1694,7 +1704,8 @@ function mergeZones(saved, fallback) {
   }
   for (const zone of saved) {
     if (used.has(zone.id)) continue;
-    if (ZONE_PRESETS.some((preset) => preset.name.toLowerCase() === zone.name.toLowerCase())) continue;
+    if (zone.name.toLowerCase() === "trim 4") continue;
+    if (ZONE_AREAS.some((area) => area.id === zone.id || area.name.toLowerCase() === zone.name.toLowerCase())) continue;
     zones.push(zone);
   }
   return zones;
@@ -1702,7 +1713,7 @@ function mergeZones(saved, fallback) {
 
 function loadZoneBook(fallback) {
   let saved = [];
-  let active = "trim-4";
+  let active = HOME_ZONE;
   try {
     const raw = localStorage.getItem(KEY_ZONES);
     if (raw) {
@@ -1715,17 +1726,17 @@ function loadZoneBook(fallback) {
           data: E(zone.data),
         });
       }
-      if (typeof parsed.active === "string") active = parsed.active;
+      if (typeof parsed.active === "string") active = parsed.active === "trim-4" ? HOME_ZONE : parsed.active;
     }
   } catch {
     saved = [];
-    active = "trim-4";
+    active = HOME_ZONE;
   }
   const zones = mergeZones(saved, fallback);
   if (!zones.some((zone) => zone.id === active)) {
     const previous = saved.find((zone) => zone.id === active);
     const match = previous && zones.find((zone) => zone.name.toLowerCase() === previous.name.toLowerCase());
-    active = match ? match.id : "trim-4";
+    active = match ? match.id : HOME_ZONE;
   }
   return { active, zones };
 }
@@ -1923,7 +1934,7 @@ function replaceData(raw) {
 }
 
 function resetSeed() {
-  const data = zoneBook.active === "trim-4" ? ze() : emptyZoneData();
+  const data = zoneBook.active === HOME_ZONE ? ze() : emptyZoneData();
   state.data = data;
   state.solve = null;
   state.storageOk = Y(data) && X(null);
@@ -2686,7 +2697,7 @@ function viewData() {
       <p class="muted gap">On iPhone: Share, then Add to Home Screen. On Android: the browser menu, then Add to Home screen. It then opens full screen, like an app.</p>
       <p class="muted">This page uses the bundled team from 25 Aug 2026, including training marks, exclusions, and the week archive. After you change it, this browser keeps your copy.</p>
     </section>
-    <button type="button" class="btn danger block" data-act="reset">${ui.resetArmed ? "Tap again to confirm" : (state.zoneId === "trim-4" ? "Reset to bundled team" : "Clear this zone")}</button>
+    <button type="button" class="btn danger block" data-act="reset">${ui.resetArmed ? "Tap again to confirm" : (state.zoneId === HOME_ZONE ? "Reset to bundled team" : "Clear this zone")}</button>
   </div>`;
 }
 
@@ -2699,7 +2710,7 @@ function viewHelp() {
     ["5. Someone calls in sick", "Mark them Off. Set any T1, T2 or T3 back to In. Tap Cover absence. It keeps people where they are and fills the gaps. A small dot shows a name that moved."],
     ["6. Change a name", "Tap a slot and pick a name. A star means that seat is pinned. Paste names from the Excel sheet if you want. Reshuffle tries another mix. Back goes to the one before."],
     ["7. Week, Cover and Train", "Week shows how often each person has done each job. Cover shows jobs with too few people. Train suggests who to teach."],
-    ["8. Saving", "Use the Zone list at the top. Trim 4 is already loaded. Tap New to add a zone, then put that zone’s team in on Data or Team. Each zone keeps its own data. Changes save on this phone. On Data, use Save file if you want a backup. Nothing is sent anywhere."],
+    ["8. Saving", "Use the Zone list at the top. Trim 4 A is your shift and is already loaded. Each zone has an A shift and a B shift. The others start empty. Put that shift’s team in on Data or Team. Each one keeps its own data. Changes save on this phone. On Data, use Save file if you want a backup. Nothing is sent anywhere."],
   ];
   return `<div class="stack"><section class="card"><h2>How to use</h2><p class="muted">Short steps. Start at Team, then Rota.</p></section>${steps.map(([title, body]) => `<section class="card"><h2>${esc(title)}</h2><p class="muted">${esc(body)}</p></section>`).join("")}</div>`;
 }
@@ -3012,7 +3023,7 @@ function onClick(event) {
       clearTimeout(resetTimer);
       ui.resetArmed = false;
       resetSeed();
-      dataNote(state.zoneId === "trim-4" ? "Reset to the bundled team." : "Cleared this zone.", "ok");
+      dataNote(state.zoneId === HOME_ZONE ? "Reset to the bundled team." : "Cleared this zone.", "ok");
       render();
     } else {
       ui.resetArmed = true;
