@@ -86,6 +86,7 @@ b { font-weight: 600; }
 .day.idle { display: grid; place-items: center; font-size: 12px; }
 .check { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 14px; }
 .check.small { min-height: 0; font-size: 12px; color: var(--muted); margin: 0; }
+.check.right { justify-content: flex-end; padding: 0 12px 8px; }
 .field { width: 100%; min-height: 44px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); padding: 10px 12px; font: inherit; }
 .field:focus { outline: none; border-color: var(--action); }
 .area { min-height: 112px; resize: vertical; }
@@ -113,6 +114,28 @@ table { border-collapse: collapse; width: 100%; }
 .rota thead th { position: sticky; top: 0; background: var(--panel-2); color: var(--muted); text-transform: uppercase; text-align: left; padding: 8px; }
 .rota tbody th { padding: 8px; font-weight: 600; text-align: left; border-top: 1px solid var(--line); }
 .rota td { border-top: 1px solid var(--line); padding: 0; }
+.style-switch { display: flex; border: 1px solid var(--line); border-radius: 8px; padding: 2px; }
+.style-switch button { min-height: 28px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 12px; font-weight: 600; padding: 2px 8px; }
+.style-switch button.on { background: var(--action-dim); color: var(--action-fg); }
+.old-scroll { max-height: 50vh; overflow: auto; background: #fff; }
+.old { border-collapse: collapse; background: #fff; color: #000; font-family: Calibri, Arial, sans-serif; font-size: 11px; }
+.old th, .old td { border: 1px solid #bfbfbf; padding: 0; text-align: center; }
+.old .stn { background: #5b9bd5; color: #fff; font-weight: 700; border-color: #fff; padding: 4px 2px; }
+.old .s1 { background: #fff59a; color: #000; font-weight: 700; }
+.old .s2 { background: #7efbff; color: #000; font-weight: 700; }
+.old .s3 { background: #c8f7c5; color: #000; font-weight: 700; }
+.old .code, .old .who { position: sticky; background: #fff; z-index: 1; color: #000; font-weight: 700; padding: 0 4px; text-align: left; }
+.old .code { left: 0; }
+.old .who { left: 28px; font-weight: 400; white-space: nowrap; }
+.box { width: 18px; height: 22px; border: 1px solid #bfbfbf; background: #fff; color: #000; font: 700 11px/20px Calibri, Arial, sans-serif; padding: 0; }
+.box.c1 { background: #fff59a; }
+.box.c2 { background: #7efbff; }
+.box.c3 { background: #c8f7c5; }
+.box.train { background: #f4b183; }
+.box.clash { background: #ff5a5a; }
+.box.block { background: #ffff00; }
+.box.here { background: #c6efce; }
+.old .g1 { border-left: 2px solid #7f7f7f; }
 .slot-btn { min-height: 44px; width: 100%; text-align: left; background: transparent; border: 0; padding: 8px; overflow-wrap: anywhere; }
 .slot.empty .slot-btn { color: var(--muted); }
 .slot.warn { background: color-mix(in srgb, var(--warn) 30%, transparent); color: var(--warn-fg); }
@@ -1663,6 +1686,8 @@ const ui = {
   zoneOpen: false,
   zoneName: "",
   zoneMsg: "",
+  rotaStyle: "new",
+  sheetMarks: { add: [], drop: [] },
 };
 
 let history = [];
@@ -1745,6 +1770,167 @@ function rememberZones() {
   state.zoneId = zoneBook.active;
   state.zones = zoneBook.zones.map((zone) => ({ id: zone.id, name: zone.name }));
 }
+
+const KEY_T4B = "rotation-optimizer-trim4b";
+const KEY_T4B_STATIONS = "rotation-optimizer-trim4b-stations";
+const KEY_T4B_SKILLS = "rotation-optimizer-trim4b-skills";
+const KEY_T4B_NABI = "rotation-optimizer-trim4b-nabi";
+const KEY_T4B_HEADS = "rotation-optimizer-trim4b-heads";
+const T4B_STATIONS = ["36L", "36R", "37R", "39L", "39R", "40R", "41L", "41R", "44L", "45L", "45R", "46L", "46R", "47L", "47R", "48L", "48R", "54L", "54R", "55R"];
+const T4B_NAMES = ["N Kennedy", "A Roberts", "A. Sunny", "A Wilson", "B Sewell", "C. Oliver", "C Wilson", "D Atkinson", "D Stone", "D Eniolorunda", "E Noble", "G Bradley", "J Skillcorn", "Z Uiabideen", "M Wood", "M Alsheikh", "K Murray", "S Ray", "T. Ibinson", "R Nazari", "S Sanderson", "L. Moscrop", "A Nabi", "M Bird"];
+const T4B_SKILLS = {
+  "a sunny": ["39L", "45L", "46L", "54R", "55R"],
+  "a wilson": ["41L", "45R", "46L", "47R", "48R", "37R"],
+  "b sewell": ["39L", "45L", "54R", "54L"],
+  "c oliver": ["36L", "36R", "47R", "48R", "37R"],
+  "c wilson": ["39R", "47L", "47R", "48R"],
+  "d atkinson": ["39L", "39R", "40R", "37R"],
+  "d stone": ["40R", "41L", "47R", "54L"],
+  "d eniolorunda": ["46R", "48L", "41R"],
+  "e noble": ["41L", "41R", "44L", "46L", "46R", "47L"],
+  "g bradley": ["41R", "48L", "37R"],
+  "j skillcorn": ["36L", "41R", "46R"],
+  "j skillcom": ["36L", "41R", "46R"],
+  "z uiabideen": ["36L", "46L"],
+  "m wood": ["36L", "36R", "44L", "47L"],
+  "m alsheikh": ["36L", "46R"],
+  "k murray": ["36L", "36R", "39R", "48R"],
+  "s ray": ["41L", "41R", "44L", "45R", "47L", "54L"],
+  "t ibinson": ["41L", "45R", "48L", "54R"],
+  "r nazari": ["39L", "40R", "45L", "36R"],
+  "s sanderson": ["41R", "44L", "55R"],
+  "l moscrop": ["39L", "40R", "47R"],
+  "a nabi": [],
+  "m bird": ["55R", "54L"]
+};
+const T4B_TRAIN = {"a nabi": ["39L", "47L"]};
+const T4B_HEADS = ["N Kennedy", "A Roberts"];
+
+function normName(name) {
+  return String(name || "").toLowerCase().replace(/\./g, "").replace(/\s+/g, " ").trim();
+}
+
+function t4bFlag(key) {
+  try { return localStorage.getItem(key) === "1"; } catch { return false; }
+}
+
+function t4bMark(key) {
+  try { localStorage.setItem(key, "1"); } catch { /* ignore */ }
+}
+
+function makeTrim4B() {
+  return E({
+    operators: T4B_NAMES.map((name) => {
+      const skills = new Set(T4B_SKILLS[normName(name)] || []);
+      const train = new Set(T4B_TRAIN[normName(name)] || []);
+      const quals = {};
+      const training = {};
+      for (const station of T4B_STATIONS) {
+        quals[station] = skills.has(station);
+        if (train.has(station)) training[station] = true;
+      }
+      const blocked = T4B_HEADS.some((head) => normName(head) === normName(name));
+      return {
+        name,
+        reg: true,
+        offline: false,
+        b1: blocked,
+        b2: blocked,
+        b3: blocked,
+        quals,
+        training,
+        blocked: {},
+      };
+    }),
+    stations: T4B_STATIONS.slice(),
+    pins: [],
+    weekHistory: {},
+    weekArchive: {},
+    selectedDay: "mon",
+    dayPlans: {},
+  });
+}
+
+function seedTrim4B(book) {
+  const zone = book.zones.find((item) => item.id === "trim-4-b");
+  if (!zone) return;
+  if (zone.data.operators.length > 0) t4bMark(KEY_T4B);
+  else if (!t4bFlag(KEY_T4B)) {
+    zone.data = makeTrim4B();
+    t4bMark(KEY_T4B);
+    t4bMark(KEY_T4B_STATIONS);
+  }
+  if (!t4bFlag(KEY_T4B_STATIONS)) {
+    zone.data = E({ ...zone.data, stations: T4B_STATIONS.slice() });
+    t4bMark(KEY_T4B_STATIONS);
+  }
+  if (!t4bFlag(KEY_T4B_SKILLS)) {
+    for (const person of zone.data.operators) {
+      if (normName(person.name) === "j skillcom") person.name = "J Skillcorn";
+      const skills = T4B_SKILLS[normName(person.name)];
+      if (!skills) continue;
+      const have = new Set(skills);
+      for (const station of zone.data.stations) {
+        person.quals[station] = have.has(station);
+        if (have.has(station)) {
+          delete person.blocked[station];
+          delete person.training[station];
+        }
+      }
+    }
+    t4bMark(KEY_T4B_SKILLS);
+  }
+  if (!t4bFlag(KEY_T4B_NABI)) {
+    for (const person of zone.data.operators) {
+      const train = T4B_TRAIN[normName(person.name)];
+      if (!train) continue;
+      for (const station of train) {
+        person.training[station] = true;
+        person.quals[station] = false;
+        delete person.blocked[station];
+      }
+    }
+    t4bMark(KEY_T4B_NABI);
+  }
+  if (!t4bFlag(KEY_T4B_HEADS)) {
+    const stations = zone.data.stations.length ? zone.data.stations : T4B_STATIONS;
+    for (const name of T4B_HEADS) {
+      if (zone.data.operators.some((person) => normName(person.name) === normName(name))) continue;
+      const quals = {};
+      for (const station of stations) quals[station] = false;
+      zone.data.operators.unshift({
+        name,
+        reg: true,
+        offline: false,
+        b1: true,
+        b2: true,
+        b3: true,
+        trainSessions: 0,
+        quals,
+        training: {},
+        blocked: {},
+      });
+    }
+    const heads = [];
+    const rest = [];
+    for (const name of T4B_HEADS) {
+      const person = zone.data.operators.find((item) => normName(item.name) === normName(name));
+      if (person) heads.push(person);
+    }
+    for (const person of zone.data.operators) {
+      if (T4B_HEADS.some((name) => normName(name) === normName(person.name))) {
+        person.b1 = true;
+        person.b2 = true;
+        person.b3 = true;
+        person.reg = true;
+        person.offline = false;
+      } else rest.push(person);
+    }
+    zone.data.operators = heads.concat(rest);
+    t4bMark(KEY_T4B_HEADS);
+  }
+}
+
 
 function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({
@@ -1846,6 +2032,7 @@ function hydrate() {
     }
     hintOn = localStorage.getItem(KEY_HINT) !== "0";
     zoneBook = loadZoneBook(data);
+    seedTrim4B(zoneBook);
     data = structuredClone(zoneBook.zones.find((zone) => zone.id === zoneBook.active).data);
     storageOk = Y(data);
   } catch {
@@ -1920,6 +2107,7 @@ function selectDay(day) {
   ui.rotaMsg = "";
   ui.rotaTone = "";
   ui.picker = null;
+  ui.sheetMarks = { add: [], drop: [] };
   render();
 }
 
@@ -1955,9 +2143,7 @@ function switchZone(id) {
   state.solve = solve;
   history = [];
   ui.picker = null;
-  ui.confirmOpen = false;
-  ui.rotaMsg = "";
-  ui.rotaTone = "";
+  ui.sheetMarks = { add: [], drop: [] };
   rememberZones();
   state.storageOk = Y(data) && X(solve);
   render();
@@ -1980,6 +2166,7 @@ function addZone(name) {
   ui.zoneOpen = false;
   ui.zoneName = "";
   ui.zoneMsg = "";
+  ui.sheetMarks = { add: [], drop: [] };
   rememberZones();
   state.storageOk = Y(data) && X(null);
   render();
@@ -2058,6 +2245,7 @@ async function runSolve() {
       bestTrain.warning ? "err" : gaps ? "" : "ok",
     );
     ui.solving = false;
+    ui.sheetMarks = { add: [], drop: [] };
     setSolve({
       ...best,
       stats,
@@ -2139,6 +2327,7 @@ async function runCover() {
       train.warning || gaps ? "err" : "ok",
     );
     ui.solving = false;
+    ui.sheetMarks = { add: [], drop: [] };
     setSolve({
       ...solved,
       stats,
@@ -2250,6 +2439,7 @@ function goBack() {
     data.pins = prev.pins;
   });
   ui.picker = null;
+  ui.sheetMarks = { add: [], drop: [] };
   setMsg(history.length ? "Previous version." : "That's the earliest one.", "");
   setSolve(prev.solve);
 }
@@ -2259,6 +2449,7 @@ function clearResult() {
   ui.solving = false;
   history = [];
   ui.picker = null;
+  ui.sheetMarks = { add: [], drop: [] };
   setMsg("Cleared.", "");
   update((data) => {
     data.pins = [];
@@ -2340,6 +2531,103 @@ function stat(n, label, tone) {
 
 function statusLine(text, tone) {
   return `<p class="status ${tone || ""}" role="status">${esc(text)}</p>`;
+}
+
+function initials(name) {
+  const parts = String(name || "").replace(/\./g, " ").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function sheetPeople(data, board) {
+  const placed = new Set();
+  for (const station of board.stations) {
+    for (const shift of [1, 2, 3]) {
+      const name = D(board.result[station], shift);
+      if (name) placed.add(name);
+    }
+  }
+  return data.operators.filter((person) => person.reg || person.offline || placed.has(person.name));
+}
+
+function sheetOn(board, marks, name, station, shift) {
+  const key = `${name}|${station}|${shift}`;
+  if (marks.drop.includes(key)) return false;
+  if (marks.add.includes(key)) return true;
+  return D(board.result[station], shift) === name;
+}
+
+function toggleSheet(name, station, shift) {
+  const board = boardNow();
+  const key = `${name}|${station}|${shift}`;
+  const on = sheetOn(board, ui.sheetMarks, name, station, shift);
+  const add = ui.sheetMarks.add.filter((item) => item !== key);
+  const drop = ui.sheetMarks.drop.filter((item) => item !== key);
+  const current = D(board.result[station], shift) === name;
+  if (on) {
+    if (current) drop.push(key);
+  } else if (!current) add.push(key);
+  ui.sheetMarks = { add, drop };
+  render();
+}
+
+function oldExcel(data, board, seats) {
+  return sheetPeople(data, board).map((person) => {
+    const cells = [];
+    for (const station of board.stations) {
+      for (const shift of [1, 2, 3]) {
+        const on = sheetOn(board, ui.sheetMarks, person.name, station, shift);
+        const train = seats.some((seat) => seat.name === person.name && seat.station === station && seat.shift === shift);
+        cells.push(on || train ? "1" : "");
+      }
+    }
+    return cells.join("\t");
+  }).join("\n");
+}
+
+function oldSheet(data, board, seats, changed) {
+  const people = sheetPeople(data, board);
+  const counts = new Map();
+  for (const person of people) {
+    for (const station of board.stations) {
+      for (const shift of [1, 2, 3]) {
+        if (!sheetOn(board, ui.sheetMarks, person.name, station, shift)) continue;
+        const key = `${station}|${shift}`;
+        counts.set(key, (counts.get(key) || 0) + 1);
+      }
+    }
+  }
+  const headStations = board.stations.map((station) => `<th class="stn" colspan="3">${esc(station)}</th>`).join("");
+  const rows = people.map((person) => {
+    const blocked = !!(person.b1 && person.b2 && person.b3);
+    const sessions = [1, 2, 3].map((shift) => {
+      const on = person.reg && !person.offline;
+      return `<td class="${shift === 1 ? "g1" : ""}"><span class="box ${on ? "here" : ""}">${on ? "1" : ""}</span></td>`;
+    }).join("");
+    const stations = board.stations.map((station) => {
+      const qualified = !!(person.quals && person.quals[station] && !(person.blocked && person.blocked[station]));
+      const training = !!(person.training && person.training[station] && !(person.quals && person.quals[station]) && !(person.blocked && person.blocked[station]));
+      return [1, 2, 3].map((shift) => {
+        const on = sheetOn(board, ui.sheetMarks, person.name, station, shift);
+        const train = seats.some((seat) => seat.name === person.name && seat.station === station && seat.shift === shift);
+        const moved = on && changed.has(`${station}|${shift}`);
+        const clash = on && (counts.get(`${station}|${shift}`) || 0) > 1;
+        const tone = clash ? "clash" : training ? "train" : (qualified || on) ? `c${shift}` : blocked ? "block" : "";
+        const label = `${person.name}, ${station}, session ${shift}${on ? ", on" : train ? ", training" : ", empty"}`;
+        return `<td class="${shift === 1 ? "g1" : ""}"><button type="button" class="box ${tone}" data-act="sheet" data-name="${esc(person.name)}" data-station="${esc(station)}" data-shift="${shift}" aria-label="${esc(label)}">${on || train ? "1" : ""}${moved ? "·" : ""}</button></td>`;
+      }).join("");
+    }).join("");
+    const floats = [1, 2, 3].map((shift) => {
+      const placed = board.stations.some((station) => sheetOn(board, ui.sheetMarks, person.name, station, shift));
+      const training = seats.some((seat) => seat.name === person.name && seat.shift === shift);
+      const spare = !person.offline && person.reg && !placed && !training;
+      return `<td class="${shift === 1 ? "g1" : ""}"><span class="box ${spare ? `c${shift}` : ""}">${spare ? "1" : ""}</span></td>`;
+    }).join("");
+    const vacs = [1, 2, 3].map((shift) => `<td class="${shift === 1 ? "g1" : ""}"><span class="box ${person.offline ? `c${shift}` : ""}">${person.offline ? "1" : ""}</span></td>`).join("");
+    return `<tr><td class="code">${esc(initials(person.name))}</td><td class="who">${esc(person.name)}</td>${sessions}${stations}${floats}${vacs}</tr>`;
+  }).join("");
+  return `<div class="old-scroll scroll" data-paste="rota"><table class="old" data-testid="old-style-table"><thead><tr><th rowspan="2"></th><th rowspan="2" class="who">Name</th><th colspan="3">Session</th>${headStations}<th class="stn" colspan="3" rowspan="2">Float</th><th class="stn" colspan="3" rowspan="2">Vac</th></tr><tr><th class="s1">1</th><th class="s2">2</th><th class="s3">3</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 function viewRota() {
@@ -2438,17 +2726,21 @@ function viewRota() {
     ${stats}
     <section class="card flush">
       <div class="row spread">
-        <h2>Today's rota</h2>
-        <label class="check small"><input type="checkbox" data-act="issues" ${ui.issuesOnly ? "checked" : ""}> Issues only</label>
+        <h2>${ui.rotaStyle === "old" ? "Old style rotation" : "New style rotation"}</h2>
+        <div class="style-switch" role="group" aria-label="Rotation layout">
+          <button type="button" data-act="rota-style" data-style="new" class="${ui.rotaStyle === "new" ? "on" : ""}" aria-pressed="${ui.rotaStyle === "new"}">New</button>
+          <button type="button" data-act="rota-style" data-style="old" class="${ui.rotaStyle === "old" ? "on" : ""}" aria-pressed="${ui.rotaStyle === "old"}">Old</button>
+        </div>
       </div>
+      ${ui.rotaStyle === "new" ? `<label class="check small right"><input type="checkbox" data-act="issues" ${ui.issuesOnly ? "checked" : ""}> Issues only</label>` : ""}
       ${changed.size ? `<p class="fine">A small dot marks a name that changed.</p>` : ""}
-      <div class="scroll" data-paste="rota">
+      ${ui.rotaStyle === "old" ? oldSheet(data, board, seats, changed) : `<div class="scroll" data-paste="rota">
         <table class="rota" data-testid="result-table">
           <thead><tr><th>Stn</th><th>S1</th><th>S2</th><th>S3</th></tr></thead>
           <tbody>${bodyRows}${empty}</tbody>
         </table>
-      </div>
-      <p class="fine">Copy the operator sheet in Excel, tap a slot here, then paste. The names land on the matching stations and stay pinned. Tap a slot to pick a name by hand. A star is a pin.</p>
+      </div>`}
+      <p class="fine">${ui.rotaStyle === "old" ? "Same layout as the old sheet. Each station has three boxes. A 1 is the session that person is on. Orange boxes mean they are learning that job, and a 1 in one of them is the session they are training." : "Copy the operator sheet in Excel, tap a slot here, then paste. The names land on the matching stations and stay pinned. Tap a slot to pick a name by hand. A star is a pin."}</p>
     </section>
     <div class="grid2">
       <button type="button" class="btn" data-act="copy-excel">Copy for Excel</button>
@@ -2763,6 +3055,15 @@ function onClick(event) {
     selectDay(button.dataset.day);
     return;
   }
+  if (act === "rota-style") {
+    ui.rotaStyle = button.dataset.style === "old" ? "old" : "new";
+    render();
+    return;
+  }
+  if (act === "sheet") {
+    toggleSheet(button.dataset.name, button.dataset.station, Number(button.dataset.shift));
+    return;
+  }
   if (act === "solve") {
     if (!ui.solving) runSolve();
     return;
@@ -2816,7 +3117,12 @@ function onClick(event) {
   }
   if (act === "copy-excel") {
     const board = boardNow();
-    copyText(ue(board.stations, board.result), "Copied — paste into Excel beside the station codes.", "Copy blocked. Select the table instead.");
+    const data = state.data;
+    const live = K(data.operators, data.stations, data.pins);
+    const key = ye(data.operators);
+    const seats = state.solve && state.solve.trainingKey === key && state.solve.training ? state.solve.training : live.seats;
+    const text = ui.rotaStyle === "old" ? oldExcel(data, board, seats) : ue(board.stations, board.result);
+    copyText(text, "Copied. Go to Excel and paste.", "Copy was blocked. Tap the button again, then paste.");
     return;
   }
   if (act === "copy-message") {
@@ -3119,11 +3425,30 @@ function onPaste(event) {
 
 async function copyText(text, ok, fail) {
   try {
-    await navigator.clipboard.writeText(text);
-    setMsg(ok, "ok");
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      setMsg(ok, "ok");
+      render();
+      return;
+    }
   } catch {
-    setMsg(fail, "err");
+    /* try the older copy path */
   }
+  const box = document.createElement("textarea");
+  box.value = text;
+  box.setAttribute("readonly", "");
+  box.style.position = "fixed";
+  box.style.left = "0";
+  box.style.top = "0";
+  box.style.fontSize = "16px";
+  box.style.opacity = "0";
+  document.body.appendChild(box);
+  box.focus();
+  box.select();
+  let copied = false;
+  try { copied = document.execCommand("copy"); } catch { copied = false; }
+  box.remove();
+  setMsg(copied ? ok : fail, copied ? "ok" : "err");
   render();
 }
 
