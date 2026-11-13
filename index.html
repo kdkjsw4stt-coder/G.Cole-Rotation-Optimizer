@@ -118,7 +118,7 @@ table { border-collapse: collapse; width: 100%; }
 .style-switch button { min-height: 28px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 12px; font-weight: 600; padding: 2px 8px; }
 .style-switch button.on { background: var(--action-dim); color: var(--action-fg); }
 .old-scroll { max-height: 50vh; overflow: auto; background: #fff; }
-.old { border-collapse: collapse; background: #fff; color: #000; font-family: Calibri, Arial, sans-serif; font-size: 11px; user-select: text; -webkit-user-select: text; }
+.old { border-collapse: collapse; background: #fff; color: #000; font-family: Calibri, Arial, sans-serif; font-size: 11px; user-select: none; -webkit-user-select: none; }
 .old th, .old td { border: 1px solid #bfbfbf; padding: 0; text-align: center; }
 .old td.box { width: 18px; height: 22px; font: 700 11px/22px Calibri, Arial, sans-serif; color: #000; background: #fff; cursor: pointer; }
 .old td.box.c1, .box.c1 { background: #fff59a; }
@@ -141,6 +141,9 @@ table { border-collapse: collapse; width: 100%; }
 .old .who { left: 28px; font-weight: 400; white-space: nowrap; }
 .box { width: 18px; height: 22px; border: 1px solid #bfbfbf; background: #fff; color: #000; font: 700 11px/20px Calibri, Arial, sans-serif; padding: 0; }
 .old .g1 { border-left: 2px solid #7f7f7f; }
+.picked { box-shadow: inset 0 0 0 2px #107c41; }
+.freeze { pointer-events: none; }
+.gridbox { touch-action: none; user-select: none; -webkit-user-select: none; cursor: cell; }
 .slot-btn { min-height: 44px; width: 100%; text-align: left; background: transparent; border: 0; padding: 8px; overflow-wrap: anywhere; }
 .slot.empty .slot-btn { color: var(--muted); }
 .slot.warn { background: color-mix(in srgb, var(--warn) 30%, transparent); color: var(--warn-fg); }
@@ -1693,6 +1696,7 @@ const ui = {
   zoneMsg: "",
   rotaStyle: "new",
   sheetMarks: { add: [], drop: [] },
+  gridRange: null,
 };
 
 let history = [];
@@ -2591,6 +2595,16 @@ function oldExcel(data, board, seats) {
   }).join("\n");
 }
 
+function gridPicked(row, col) {
+  const range = ui.gridRange;
+  if (!range) return "";
+  const r1 = Math.min(range.r1, range.r2);
+  const r2 = Math.max(range.r1, range.r2);
+  const c1 = Math.min(range.c1, range.c2);
+  const c2 = Math.max(range.c1, range.c2);
+  return row >= r1 && row <= r2 && col >= c1 && col <= c2 ? " picked" : "";
+}
+
 function oldSheet(data, board, seats, changed) {
   const people = sheetPeople(data, board);
   const counts = new Map();
@@ -2603,14 +2617,16 @@ function oldSheet(data, board, seats, changed) {
       }
     }
   }
+  const floatStart = 3 + board.stations.length * 3;
   const headStations = board.stations.map((station) => `<th class="stn" colspan="3">${esc(station)}</th>`).join("");
-  const rows = people.map((person) => {
+  const rows = people.map((person, row) => {
     const blocked = !!(person.b1 && person.b2 && person.b3);
     const sessions = [1, 2, 3].map((shift) => {
       const on = person.reg && !person.offline;
-      return `<td class="box ${on ? "here" : ""} ${shift === 1 ? "g1" : ""}">${on ? "1" : ""}</td>`;
+      const value = on ? "1" : "";
+      return `<td class="box ${on ? "here" : ""} ${shift === 1 ? "g1" : ""}${gridPicked(row, shift - 1)}" data-r="${row}" data-c="${shift - 1}" data-v="${value}">${value}</td>`;
     }).join("");
-    const stations = board.stations.map((station) => {
+    const stations = board.stations.map((station, stationIndex) => {
       const qualified = !!(person.quals && person.quals[station] && !(person.blocked && person.blocked[station]));
       const training = !!(person.training && person.training[station] && !(person.quals && person.quals[station]) && !(person.blocked && person.blocked[station]));
       return [1, 2, 3].map((shift) => {
@@ -2620,19 +2636,27 @@ function oldSheet(data, board, seats, changed) {
         const clash = on && (counts.get(`${station}|${shift}`) || 0) > 1;
         const tone = clash ? "clash" : training ? "train" : (qualified || on) ? `c${shift}` : blocked ? "block" : "";
         const label = `${person.name}, ${station}, session ${shift}${on ? ", on" : train ? ", training" : ", empty"}`;
-        return `<td class="box ${tone} ${shift === 1 ? "g1" : ""}" data-act="sheet" data-name="${esc(person.name)}" data-station="${esc(station)}" data-shift="${shift}" aria-label="${esc(label)}">${on || train ? "1" : ""}${moved ? "·" : ""}</td>`;
+        const col = 3 + stationIndex * 3 + (shift - 1);
+        const value = on || train ? "1" : "";
+        return `<td class="box ${tone} ${shift === 1 ? "g1" : ""}${gridPicked(row, col)}" data-r="${row}" data-c="${col}" data-v="${value}" data-toggle="1" data-name="${esc(person.name)}" data-station="${esc(station)}" data-shift="${shift}" aria-label="${esc(label)}">${value}${moved ? "·" : ""}</td>`;
       }).join("");
     }).join("");
     const floats = [1, 2, 3].map((shift) => {
       const placed = board.stations.some((station) => sheetOn(board, ui.sheetMarks, person.name, station, shift));
       const training = seats.some((seat) => seat.name === person.name && seat.shift === shift);
       const spare = !person.offline && person.reg && !placed && !training;
-      return `<td class="box ${spare ? `c${shift}` : ""} ${shift === 1 ? "g1" : ""}">${spare ? "1" : ""}</td>`;
+      const col = floatStart + shift - 1;
+      const value = spare ? "1" : "";
+      return `<td class="box ${spare ? `c${shift}` : ""} ${shift === 1 ? "g1" : ""}${gridPicked(row, col)}" data-r="${row}" data-c="${col}" data-v="${value}">${value}</td>`;
     }).join("");
-    const vacs = [1, 2, 3].map((shift) => `<td class="box ${person.offline ? `c${shift}` : ""} ${shift === 1 ? "g1" : ""}">${person.offline ? "1" : ""}</td>`).join("");
-    return `<tr><td class="code">${esc(initials(person.name))}</td><td class="who">${esc(person.name)}</td>${sessions}${stations}${floats}${vacs}</tr>`;
+    const vacs = [1, 2, 3].map((shift) => {
+      const col = floatStart + 3 + shift - 1;
+      const value = person.offline ? "1" : "";
+      return `<td class="box ${person.offline ? `c${shift}` : ""} ${shift === 1 ? "g1" : ""}${gridPicked(row, col)}" data-r="${row}" data-c="${col}" data-v="${value}">${value}</td>`;
+    }).join("");
+    return `<tr><td class="code freeze">${esc(initials(person.name))}</td><td class="who freeze">${esc(person.name)}</td>${sessions}${stations}${floats}${vacs}</tr>`;
   }).join("");
-  return `<div class="old-scroll scroll" data-paste="rota" data-sheet-copy="1"><table class="old" data-testid="old-style-table"><thead><tr><th rowspan="2"></th><th rowspan="2" class="who">Name</th><th colspan="3">Session</th>${headStations}<th class="stn" colspan="3" rowspan="2">Float</th><th class="stn" colspan="3" rowspan="2">Vac</th></tr><tr><th class="s1">1</th><th class="s2">2</th><th class="s3">3</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  return `<div class="old-scroll scroll gridbox" data-paste="rota" data-grid="1"><table class="old" data-testid="old-style-table"><thead><tr><th rowspan="2"></th><th rowspan="2" class="who">Name</th><th colspan="3">Session</th>${headStations}<th class="stn" colspan="3" rowspan="2">Float</th><th class="stn" colspan="3" rowspan="2">Vac</th></tr><tr><th class="s1">1</th><th class="s2">2</th><th class="s3">3</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 function viewRota() {
@@ -2699,7 +2723,7 @@ function viewRota() {
     names.forEach((name) => { if (name) counts[name] = (counts[name] || 0) + 1; });
     return Object.values(counts).some((n) => n >= 2) || names.some((name) => !name) || [1, 2, 3].some((shift) => changed.has(`${station}|${shift}`));
   });
-  const bodyRows = rows.map((station) => {
+  const bodyRows = rows.map((station, row) => {
     const names = [1, 2, 3].map((shift) => D(board.result[station], shift) || "");
     const counts = {};
     names.forEach((name) => { if (name) counts[name] = (counts[name] || 0) + 1; });
@@ -2710,9 +2734,9 @@ function viewRota() {
       const tone = !name ? "empty" : counts[name] >= 3 ? "bad" : counts[name] === 2 ? "warn" : "";
       const mark = changedCell ? `<span class="dot" aria-hidden="true"></span>` : "";
       const shown = name ? `${mark}${esc(name)}${pinned ? " *" : ""}` : (changedCell ? mark : "—");
-      return `<td class="slot ${tone}"><button type="button" class="slot-btn" data-act="slot" data-station="${esc(station)}" data-shift="${shift}" aria-label="${esc(station)} shift ${shift}, ${esc(name || "empty")}${pinned ? ", pinned" : ""}${changedCell ? ", changed" : ""}. Paste or change">${shown}</button></td>`;
+      return `<td class="slot ${tone}${gridPicked(row, index)}" data-r="${row}" data-c="${index}" data-v="${esc(name)}" data-edit="1" data-station="${esc(station)}" data-shift="${shift}"><div class="slot-btn" aria-label="${esc(station)} shift ${shift}, ${esc(name || "empty")}${pinned ? ", pinned" : ""}${changedCell ? ", changed" : ""}. Paste or change">${shown}</div></td>`;
     }).join("");
-    return `<tr><th>${esc(station)}</th>${cells}</tr>`;
+    return `<tr><th class="freeze">${esc(station)}</th>${cells}</tr>`;
   }).join("");
   const empty = rows.length === 0 ? `<tr><td colspan="4" class="muted pad">No repeats or empty slots.</td></tr>` : "";
   return `<div class="stack">
@@ -2739,13 +2763,13 @@ function viewRota() {
       </div>
       ${ui.rotaStyle === "new" ? `<label class="check small right"><input type="checkbox" data-act="issues" ${ui.issuesOnly ? "checked" : ""}> Issues only</label>` : ""}
       ${changed.size ? `<p class="fine">A small dot marks a name that changed.</p>` : ""}
-      ${ui.rotaStyle === "old" ? oldSheet(data, board, seats, changed) : `<div class="scroll" data-paste="rota">
+      ${ui.rotaStyle === "old" ? oldSheet(data, board, seats, changed) : `<div class="scroll gridbox" data-paste="rota" data-grid="1">
         <table class="rota" data-testid="result-table">
           <thead><tr><th>Stn</th><th>S1</th><th>S2</th><th>S3</th></tr></thead>
           <tbody>${bodyRows}${empty}</tbody>
         </table>
       </div>`}
-      <p class="fine">${ui.rotaStyle === "old" ? "Drag over the boxes with the mouse, then copy and paste into Excel. A tap still adds or removes a 1. Red means two people are on that job in that session. Orange is training." : "Copy the operator sheet in Excel, tap a slot here, then paste. The names land on the matching stations and stay pinned. Tap a slot to pick a name by hand. A star is a pin."}</p>
+      <p class="fine">${ui.rotaStyle === "old" ? "Drag from one box to another. Only those boxes are copied. Ctrl+C pastes into Excel. Copy for Excel copies every job box." : "Drag across the names. Only those names are copied. Ctrl+C pastes into Excel. Copy for Excel copies every name."}</p>
     </section>
     <div class="grid2">
       <button type="button" class="btn" data-act="copy-excel">Copy for Excel</button>
@@ -3062,15 +3086,8 @@ function onClick(event) {
   }
   if (act === "rota-style") {
     ui.rotaStyle = button.dataset.style === "old" ? "old" : "new";
+    ui.gridRange = null;
     render();
-    return;
-  }
-  if (act === "sheet") {
-    if (sheetDrag && sheetDrag.moved) {
-      sheetDrag = null;
-      return;
-    }
-    toggleSheet(button.dataset.name, button.dataset.station, Number(button.dataset.shift));
     return;
   }
   if (act === "solve") {
@@ -3423,11 +3440,20 @@ function onPaste(event) {
   if (event.target.closest("textarea, input, select")) return;
   const text = event.clipboardData.getData("text/plain") || event.clipboardData.getData("text");
   if (!text || !text.trim()) return;
-  const slot = event.target.closest("[data-act='slot']");
+  const slot = event.target.closest("[data-edit], [data-act='slot']");
   const inRota = slot || event.target.closest("[data-paste='rota']");
   if (!inRota && !ui.picker) return;
   event.preventDefault();
-  if (slot) pasteRota(text, slot.dataset.station, Number(slot.dataset.shift));
+  let station = slot && slot.dataset.station;
+  let shift = slot && Number(slot.dataset.shift);
+  if (!station && ui.gridRange && ui.gridRange.r1 === ui.gridRange.r2 && ui.gridRange.c1 === ui.gridRange.c2) {
+    const cell = document.querySelector(`[data-grid] [data-r="${ui.gridRange.r1}"][data-c="${ui.gridRange.c1}"][data-edit]`);
+    if (cell) {
+      station = cell.dataset.station;
+      shift = Number(cell.dataset.shift);
+    }
+  }
+  if (station) pasteRota(text, station, shift);
   else if (ui.picker && !text.includes("\t") && !text.includes("\n") && !text.includes("·")) pasteRota(text, ui.picker.station, ui.picker.shift);
   else pasteRota(text, "", 0);
 }
@@ -3462,44 +3488,109 @@ async function copyText(text, ok, fail) {
 }
 
 document.addEventListener("click", onClick);
-let sheetDrag = null;
-document.addEventListener("mousedown", (event) => {
-  if (event.button !== 0) return;
-  const cell = event.target.closest && event.target.closest("[data-act='sheet']");
-  sheetDrag = cell ? { x: event.clientX, y: event.clientY, moved: false } : null;
-});
-document.addEventListener("mousemove", (event) => {
-  if (!sheetDrag || !(event.buttons & 1)) return;
-  if (Math.abs(event.clientX - sheetDrag.x) > 4 || Math.abs(event.clientY - sheetDrag.y) > 4) sheetDrag.moved = true;
-});
-function selectionGrid(table) {
-  if (!table) return "";
-  const sel = window.getSelection();
-  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return "";
-  const range = sel.getRangeAt(0);
-  const rows = [];
-  table.querySelectorAll("tr").forEach((row) => {
-    const cells = [];
-    let hit = false;
-    row.querySelectorAll("th, td").forEach((cell) => {
-      if (!range.intersectsNode(cell)) return;
-      hit = true;
-      cells.push((cell.textContent || "").replace(/·/g, "").trim());
-    });
-    if (hit) rows.push(cells.join("\t"));
-  });
-  return rows.length ? rows.join("\n") : "";
+let gridDrag = null;
+function gridCell(x, y, root) {
+  const el = document.elementFromPoint(x, y);
+  const cell = el && el.closest && el.closest("[data-r]");
+  if (!cell || !root || !root.contains(cell)) return null;
+  return { r: Number(cell.dataset.r), c: Number(cell.dataset.c) };
 }
-document.addEventListener("copy", (event) => {
-  const sel = window.getSelection();
-  const node = sel && sel.anchorNode;
-  const el = node && (node.nodeType === 1 ? node : node.parentElement);
-  const root = el && el.closest && el.closest("[data-sheet-copy]");
+function paintGrid() {
+  document.querySelectorAll("[data-grid] [data-r]").forEach((cell) => {
+    cell.classList.toggle("picked", gridPicked(Number(cell.dataset.r), Number(cell.dataset.c)) !== "");
+  });
+}
+function rangeText(root, range) {
+  if (!root || !range) return "";
+  const r1 = Math.min(range.r1, range.r2);
+  const r2 = Math.max(range.r1, range.r2);
+  const c1 = Math.min(range.c1, range.c2);
+  const c2 = Math.max(range.c1, range.c2);
+  const rows = [];
+  for (let r = r1; r <= r2; r++) {
+    const cells = [];
+    for (let c = c1; c <= c2; c++) {
+      const el = root.querySelector(`[data-r="${r}"][data-c="${c}"]`);
+      cells.push(el ? el.getAttribute("data-v") || "" : "");
+    }
+    rows.push(cells.join("\t"));
+  }
+  return rows.join("\n");
+}
+function finishGridPointer() {
+  const drag = gridDrag;
+  gridDrag = null;
+  if (!drag || drag.moved) return;
+  const cell = drag.root.querySelector(`[data-r="${drag.r}"][data-c="${drag.c}"]`);
+  if (!cell) return;
+  if (cell.dataset.toggle === "1" && cell.dataset.name) {
+    toggleSheet(cell.dataset.name, cell.dataset.station, Number(cell.dataset.shift));
+    return;
+  }
+  if (cell.dataset.edit === "1" && cell.dataset.station) {
+    ui.picker = { station: cell.dataset.station, shift: Number(cell.dataset.shift) };
+    ui.confirmOpen = false;
+    render();
+  }
+}
+document.addEventListener("pointerdown", (event) => {
+  if (event.button !== 0) return;
+  const root = event.target.closest && event.target.closest("[data-grid]");
   if (!root) return;
-  const text = selectionGrid(root.querySelector("table"));
+  const hit = gridCell(event.clientX, event.clientY, root);
+  if (!hit) return;
+  event.preventDefault();
+  try { root.setPointerCapture(event.pointerId); } catch { /* ignore */ }
+  gridDrag = { root, id: event.pointerId, r: hit.r, c: hit.c, moved: false };
+  ui.gridRange = { r1: hit.r, c1: hit.c, r2: hit.r, c2: hit.c };
+  paintGrid();
+});
+document.addEventListener("pointermove", (event) => {
+  if (!gridDrag || event.pointerId !== gridDrag.id) return;
+  const hit = gridCell(event.clientX, event.clientY, gridDrag.root);
+  if (!hit) return;
+  if (hit.r !== gridDrag.r || hit.c !== gridDrag.c) gridDrag.moved = true;
+  ui.gridRange = { r1: gridDrag.r, c1: gridDrag.c, r2: hit.r, c2: hit.c };
+  paintGrid();
+});
+document.addEventListener("pointerup", (event) => {
+  if (!gridDrag || event.pointerId !== gridDrag.id) return;
+  finishGridPointer();
+});
+document.addEventListener("pointercancel", () => { gridDrag = null; });
+document.addEventListener("keydown", (event) => {
+  if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "c") return;
+  const target = event.target;
+  if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
+  const root = document.querySelector("[data-grid]");
+  const text = rangeText(root, ui.gridRange);
   if (!text) return;
   event.preventDefault();
-  event.clipboardData.setData("text/plain", text);
+  const box = document.createElement("textarea");
+  box.value = text;
+  box.setAttribute("readonly", "");
+  box.style.position = "fixed";
+  box.style.left = "0";
+  box.style.top = "0";
+  box.style.fontSize = "16px";
+  box.style.opacity = "0";
+  document.body.appendChild(box);
+  box.focus();
+  box.select();
+  let copied = false;
+  try { copied = document.execCommand("copy"); } catch { copied = false; }
+  box.remove();
+  if (!copied && navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).catch(() => {
+      setMsg("Copy was blocked. Tap Copy for Excel, then paste.", "err");
+      render();
+    });
+    return;
+  }
+  if (!copied) {
+    setMsg("Copy was blocked. Tap Copy for Excel, then paste.", "err");
+    render();
+  }
 });
 let skillLock = 0;
 let skillHold = null;
