@@ -118,8 +118,20 @@ table { border-collapse: collapse; width: 100%; }
 .style-switch button { min-height: 28px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 12px; font-weight: 600; padding: 2px 8px; }
 .style-switch button.on { background: var(--action-dim); color: var(--action-fg); }
 .old-scroll { max-height: 50vh; overflow: auto; background: #fff; }
-.old { border-collapse: collapse; background: #fff; color: #000; font-family: Calibri, Arial, sans-serif; font-size: 11px; }
+.old { border-collapse: collapse; background: #fff; color: #000; font-family: Calibri, Arial, sans-serif; font-size: 11px; user-select: text; -webkit-user-select: text; }
 .old th, .old td { border: 1px solid #bfbfbf; padding: 0; text-align: center; }
+.old td.box { width: 18px; height: 22px; font: 700 11px/22px Calibri, Arial, sans-serif; color: #000; background: #fff; cursor: pointer; }
+.old td.box.c1, .box.c1 { background: #fff59a; }
+.old td.box.c2, .box.c2 { background: #7efbff; }
+.old td.box.c3, .box.c3 { background: #c8f7c5; }
+.old td.box.train, .box.train { background: #f4b183; }
+.old td.box.clash, .box.clash { background: #ff5a5a; }
+.old td.box.block, .box.block { background: #ffff00; }
+.old td.box.here, .box.here { background: #c6efce; }
+@media (min-width: 1024px) {
+  .old-scroll { max-height: calc(100dvh - 16rem); }
+  .old td.box { height: 32px; width: auto; min-width: 28px; line-height: 32px; }
+}
 .old .stn { background: #5b9bd5; color: #fff; font-weight: 700; border-color: #fff; padding: 4px 2px; }
 .old .s1 { background: #fff59a; color: #000; font-weight: 700; }
 .old .s2 { background: #7efbff; color: #000; font-weight: 700; }
@@ -128,13 +140,6 @@ table { border-collapse: collapse; width: 100%; }
 .old .code { left: 0; }
 .old .who { left: 28px; font-weight: 400; white-space: nowrap; }
 .box { width: 18px; height: 22px; border: 1px solid #bfbfbf; background: #fff; color: #000; font: 700 11px/20px Calibri, Arial, sans-serif; padding: 0; }
-.box.c1 { background: #fff59a; }
-.box.c2 { background: #7efbff; }
-.box.c3 { background: #c8f7c5; }
-.box.train { background: #f4b183; }
-.box.clash { background: #ff5a5a; }
-.box.block { background: #ffff00; }
-.box.here { background: #c6efce; }
 .old .g1 { border-left: 2px solid #7f7f7f; }
 .slot-btn { min-height: 44px; width: 100%; text-align: left; background: transparent; border: 0; padding: 8px; overflow-wrap: anywhere; }
 .slot.empty .slot-btn { color: var(--muted); }
@@ -2603,7 +2608,7 @@ function oldSheet(data, board, seats, changed) {
     const blocked = !!(person.b1 && person.b2 && person.b3);
     const sessions = [1, 2, 3].map((shift) => {
       const on = person.reg && !person.offline;
-      return `<td class="${shift === 1 ? "g1" : ""}"><span class="box ${on ? "here" : ""}">${on ? "1" : ""}</span></td>`;
+      return `<td class="box ${on ? "here" : ""} ${shift === 1 ? "g1" : ""}">${on ? "1" : ""}</td>`;
     }).join("");
     const stations = board.stations.map((station) => {
       const qualified = !!(person.quals && person.quals[station] && !(person.blocked && person.blocked[station]));
@@ -2615,19 +2620,19 @@ function oldSheet(data, board, seats, changed) {
         const clash = on && (counts.get(`${station}|${shift}`) || 0) > 1;
         const tone = clash ? "clash" : training ? "train" : (qualified || on) ? `c${shift}` : blocked ? "block" : "";
         const label = `${person.name}, ${station}, session ${shift}${on ? ", on" : train ? ", training" : ", empty"}`;
-        return `<td class="${shift === 1 ? "g1" : ""}"><button type="button" class="box ${tone}" data-act="sheet" data-name="${esc(person.name)}" data-station="${esc(station)}" data-shift="${shift}" aria-label="${esc(label)}">${on || train ? "1" : ""}${moved ? "·" : ""}</button></td>`;
+        return `<td class="box ${tone} ${shift === 1 ? "g1" : ""}" data-act="sheet" data-name="${esc(person.name)}" data-station="${esc(station)}" data-shift="${shift}" aria-label="${esc(label)}">${on || train ? "1" : ""}${moved ? "·" : ""}</td>`;
       }).join("");
     }).join("");
     const floats = [1, 2, 3].map((shift) => {
       const placed = board.stations.some((station) => sheetOn(board, ui.sheetMarks, person.name, station, shift));
       const training = seats.some((seat) => seat.name === person.name && seat.shift === shift);
       const spare = !person.offline && person.reg && !placed && !training;
-      return `<td class="${shift === 1 ? "g1" : ""}"><span class="box ${spare ? `c${shift}` : ""}">${spare ? "1" : ""}</span></td>`;
+      return `<td class="box ${spare ? `c${shift}` : ""} ${shift === 1 ? "g1" : ""}">${spare ? "1" : ""}</td>`;
     }).join("");
-    const vacs = [1, 2, 3].map((shift) => `<td class="${shift === 1 ? "g1" : ""}"><span class="box ${person.offline ? `c${shift}` : ""}">${person.offline ? "1" : ""}</span></td>`).join("");
+    const vacs = [1, 2, 3].map((shift) => `<td class="box ${person.offline ? `c${shift}` : ""} ${shift === 1 ? "g1" : ""}">${person.offline ? "1" : ""}</td>`).join("");
     return `<tr><td class="code">${esc(initials(person.name))}</td><td class="who">${esc(person.name)}</td>${sessions}${stations}${floats}${vacs}</tr>`;
   }).join("");
-  return `<div class="old-scroll scroll" data-paste="rota"><table class="old" data-testid="old-style-table"><thead><tr><th rowspan="2"></th><th rowspan="2" class="who">Name</th><th colspan="3">Session</th>${headStations}<th class="stn" colspan="3" rowspan="2">Float</th><th class="stn" colspan="3" rowspan="2">Vac</th></tr><tr><th class="s1">1</th><th class="s2">2</th><th class="s3">3</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  return `<div class="old-scroll scroll" data-paste="rota" data-sheet-copy="1"><table class="old" data-testid="old-style-table"><thead><tr><th rowspan="2"></th><th rowspan="2" class="who">Name</th><th colspan="3">Session</th>${headStations}<th class="stn" colspan="3" rowspan="2">Float</th><th class="stn" colspan="3" rowspan="2">Vac</th></tr><tr><th class="s1">1</th><th class="s2">2</th><th class="s3">3</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 function viewRota() {
@@ -2740,7 +2745,7 @@ function viewRota() {
           <tbody>${bodyRows}${empty}</tbody>
         </table>
       </div>`}
-      <p class="fine">${ui.rotaStyle === "old" ? "Same layout as the old sheet. Each station has three boxes. A 1 is the session that person is on. Orange boxes mean they are learning that job, and a 1 in one of them is the session they are training." : "Copy the operator sheet in Excel, tap a slot here, then paste. The names land on the matching stations and stay pinned. Tap a slot to pick a name by hand. A star is a pin."}</p>
+      <p class="fine">${ui.rotaStyle === "old" ? "Drag over the boxes with the mouse, then copy and paste into Excel. A tap still adds or removes a 1. Red means two people are on that job in that session. Orange is training." : "Copy the operator sheet in Excel, tap a slot here, then paste. The names land on the matching stations and stay pinned. Tap a slot to pick a name by hand. A star is a pin."}</p>
     </section>
     <div class="grid2">
       <button type="button" class="btn" data-act="copy-excel">Copy for Excel</button>
@@ -3061,6 +3066,10 @@ function onClick(event) {
     return;
   }
   if (act === "sheet") {
+    if (sheetDrag && sheetDrag.moved) {
+      sheetDrag = null;
+      return;
+    }
     toggleSheet(button.dataset.name, button.dataset.station, Number(button.dataset.shift));
     return;
   }
@@ -3453,6 +3462,45 @@ async function copyText(text, ok, fail) {
 }
 
 document.addEventListener("click", onClick);
+let sheetDrag = null;
+document.addEventListener("mousedown", (event) => {
+  if (event.button !== 0) return;
+  const cell = event.target.closest && event.target.closest("[data-act='sheet']");
+  sheetDrag = cell ? { x: event.clientX, y: event.clientY, moved: false } : null;
+});
+document.addEventListener("mousemove", (event) => {
+  if (!sheetDrag || !(event.buttons & 1)) return;
+  if (Math.abs(event.clientX - sheetDrag.x) > 4 || Math.abs(event.clientY - sheetDrag.y) > 4) sheetDrag.moved = true;
+});
+function selectionGrid(table) {
+  if (!table) return "";
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return "";
+  const range = sel.getRangeAt(0);
+  const rows = [];
+  table.querySelectorAll("tr").forEach((row) => {
+    const cells = [];
+    let hit = false;
+    row.querySelectorAll("th, td").forEach((cell) => {
+      if (!range.intersectsNode(cell)) return;
+      hit = true;
+      cells.push((cell.textContent || "").replace(/·/g, "").trim());
+    });
+    if (hit) rows.push(cells.join("\t"));
+  });
+  return rows.length ? rows.join("\n") : "";
+}
+document.addEventListener("copy", (event) => {
+  const sel = window.getSelection();
+  const node = sel && sel.anchorNode;
+  const el = node && (node.nodeType === 1 ? node : node.parentElement);
+  const root = el && el.closest && el.closest("[data-sheet-copy]");
+  if (!root) return;
+  const text = selectionGrid(root.querySelector("table"));
+  if (!text) return;
+  event.preventDefault();
+  event.clipboardData.setData("text/plain", text);
+});
 let skillLock = 0;
 let skillHold = null;
 function pinSkillScroll(scroller, top, left) {
