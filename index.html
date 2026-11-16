@@ -152,11 +152,11 @@ table { border-collapse: collapse; width: 100%; }
 .display-fit { flex: 1; min-height: 0; overflow: hidden; }
 .display-inner { width: max-content; visibility: hidden; }
 .disp-new { border-collapse: collapse; background: #fff; color: #000; font-size: 16px; }
-.disp-new th, .disp-new td { padding: 8px 12px; border-top: 1px solid #bfbfbf; text-align: left; }
-.disp-new th.h1 { background: #fff59a; }
-.disp-new th.h2 { background: #7efbff; }
-.disp-new th.h3 { background: #c8f7c5; }
-.disp-new td.n { font-weight: 600; }
+.disp-new th, .disp-new td { padding: 8px 12px; border: 1px solid #bfbfbf; text-align: center; }
+.disp-new th.h1, .disp-new td.c1 { background: #fff59a; }
+.disp-new th.h2, .disp-new td.c2 { background: #7efbff; }
+.disp-new th.h3, .disp-new td.c3 { background: #c8f7c5; }
+.disp-new td.n, .disp-new th.name { font-weight: 600; text-align: left; background: #fff; white-space: nowrap; }
 .old-scroll.fill { max-height: none; overflow: visible; width: max-content; }
 .old-scroll.fill .old { font-size: 14px; }
 .old-scroll.fill td.box { height: 32px; width: auto; min-width: 28px; padding: 0 2px; font-size: 14px; line-height: 32px; }
@@ -2799,27 +2799,34 @@ function viewRota() {
       <button type="button" class="btn" data-act="copy-message">Copy message</button>
     </div>
     ${board.stats && board.stats.filled > 0 ? `<button type="button" class="btn primary block" data-act="open-confirm">Confirm date</button>` : ""}
-    ${displayView(data, board, seats, changed)}
+    ${displayView(data, board)}
   </div>`;
 }
 
-function displayNew(board) {
-  const rows = board.stations.map((station, row) => {
+function displayBoard(data, board) {
+  const placed = new Set();
+  for (const station of board.stations) {
+    for (const shift of [1, 2, 3]) {
+      const name = D(board.result[station], shift);
+      if (name) placed.add(name);
+    }
+  }
+  const people = sheetPeople(data, board).filter((person) => !person.offline || placed.has(person.name));
+  const rows = people.map((person, row) => {
     const cells = [1, 2, 3].map((shift, index) => {
-      const name = D(board.result[station], shift) || "";
-      return `<td class="${gridPicked(row, index + 1).trim()}" data-r="${row}" data-c="${index + 1}" data-v="${esc(name)}">${esc(name)}</td>`;
+      const stations = board.stations.filter((station) => sheetOn(board, ui.sheetMarks, person.name, station, shift));
+      const value = stations.join(" / ");
+      return `<td class="c${shift}${gridPicked(row, index + 1)}" data-r="${row}" data-c="${index + 1}" data-v="${esc(value)}">${esc(value)}</td>`;
     }).join("");
-    return `<tr><td class="n${gridPicked(row, 0)}" data-r="${row}" data-c="0" data-v="${esc(station)}">${esc(station)}</td>${cells}</tr>`;
+    return `<tr><td class="n${gridPicked(row, 0)}" data-r="${row}" data-c="0" data-v="${esc(person.name)}">${esc(person.name)}</td>${cells}</tr>`;
   }).join("");
-  return `<div class="gridbox" data-grid="1"><table class="disp-new" data-testid="display-new"><thead><tr><th>Station</th><th class="h1">1st</th><th class="h2">2nd</th><th class="h3">3rd</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  return `<div class="gridbox" data-grid="1"><table class="disp-new" data-testid="display-people"><thead><tr><th class="name">Name</th><th class="h1">1st</th><th class="h2">2nd</th><th class="h3">3rd</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
-function displayView(data, board, seats, changed) {
+function displayView(data, board) {
   if (!ui.display) return "";
   const day = N(data.selectedDay || "mon");
-  const style = ui.rotaStyle === "old" ? "Old style" : "New style";
-  const sheet = ui.rotaStyle === "old" ? oldSheet(data, board, seats, changed, true) : displayNew(board);
-  return `<div class="display" role="dialog" aria-modal="true" aria-label="Display rotation"><div class="display-bar"><p>${esc(day)} · ${style}</p><div class="display-actions"><button type="button" data-act="copy-display">Copy</button><button type="button" class="go" data-act="close-display">Close</button></div></div><div class="display-fit" data-fit><div class="display-inner" data-fit-inner>${sheet}</div></div></div>`;
+  return `<div class="display" role="dialog" aria-modal="true" aria-label="Display rotation"><div class="display-bar"><p>${esc(day)}</p><div class="display-actions"><button type="button" data-act="copy-display">Copy</button><button type="button" class="go" data-act="close-display">Close</button></div></div><div class="display-fit" data-fit><div class="display-inner" data-fit-inner>${displayBoard(data, board)}</div></div></div>`;
 }
 
 function overlays() {
