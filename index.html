@@ -153,14 +153,23 @@ table { border-collapse: collapse; width: 100%; }
 .display-sheet { position: absolute; inset: 0; height: 100%; width: 100%; overflow: hidden; background: #fff; color: #000; container-type: size; }
 .disp-people { height: 100%; width: 100%; border-collapse: collapse; text-align: center; table-layout: fixed; background: #fff; color: #000; font-size: min(2.2cqh, 4cqw); }
 .disp-people th, .disp-people td { border: 1px solid #bfbfbf; padding: 0 4px; font-weight: 600; }
-.disp-people th.name, .disp-people td.n { text-align: left; white-space: nowrap; background: #fff; }
+.disp-people th.nm, .disp-people td.n { text-align: left; white-space: nowrap; background: #fff; }
 .disp-people tr.alt td.n { background: #f0f0f0; }
-.disp-people th.h1, .disp-people td.c1 { background: #fff59a; }
-.disp-people th.h2, .disp-people td.c2 { background: #7efbff; }
-.disp-people th.h3, .disp-people td.c3 { background: #c8f7c5; }
-.disp-people tr.alt td.c1 { background: #f3e06a; }
-.disp-people tr.alt td.c2 { background: #5ee6f0; }
-.disp-people tr.alt td.c3 { background: #a6e8a2; }
+.disp-people th.h1, .disp-people th.h2, .disp-people th.h3 { background: #e6e6e6; }
+.disp-people td.plain { background: #fff; }
+.disp-people tr.alt td.plain { background: #f0f0f0; }
+.disp-people td.float { background: #fff59a; }
+.disp-people tr.alt td.float { background: #f3e06a; }
+.disp-people td.train { background: #b9e2fa; }
+.disp-people tr.alt td.train { background: #7ec8f0; }
+.disp-people td.off { background: #e24b4b; color: #fff; }
+.disp-people tr.alt td.off { background: #c93c3c; color: #fff; }
+.disp-people td.spare { cursor: pointer; }
+.spare-bar { position: absolute; left: 0; right: 0; bottom: 0; z-index: 10; border-top: 1px solid #bfbfbf; background: #fff; color: #000; padding: 8px; }
+.spare-bar p { margin: 0 0 8px; text-align: center; font-size: 14px; font-weight: 600; }
+.spare-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.spare-grid button { min-height: 44px; border-radius: 8px; border: 1px solid #bfbfbf; background: #fff; color: #000; font-size: 14px; font-weight: 600; }
+.spare-grid .clear { color: #555; font-weight: 400; }
 .old-scroll.fill { max-height: none; overflow: visible; width: max-content; }
 .old-scroll.fill .old { font-size: 14px; }
 .old-scroll.fill td.box { height: 32px; width: auto; min-width: 28px; padding: 0 2px; font-size: 14px; line-height: 32px; }
@@ -1468,6 +1477,16 @@ function X(e) {
     }
 }
 
+function cleanNotes(notes) {
+  if (!notes || typeof notes !== "object") return undefined;
+  const allowed = new Set(["Float", "WW", "ZP", "FAM", "OFF"]);
+  const out = {};
+  for (const [key, value] of Object.entries(notes)) {
+    if (typeof value === "string" && allowed.has(value)) out[key] = value;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
 function Be(e, t) {
     let n = e.stations.filter(e => t.stations.includes(e)),
         r = {};
@@ -1487,7 +1506,8 @@ function Be(e, t) {
         stats: J(r, n, a),
         training: e.training,
         trainingKey: e.trainingKey,
-        trainingWarning: e.trainingWarning
+        trainingWarning: e.trainingWarning,
+        spareNotes: cleanNotes(e.spareNotes)
     }
 }
 
@@ -1498,7 +1518,8 @@ function Ve(e) {
         score: e.score,
         training: e.training,
         trainingKey: e.trainingKey,
-        trainingWarning: e.trainingWarning
+        trainingWarning: e.trainingWarning,
+        spareNotes: cleanNotes(e.spareNotes)
     }
 }
 
@@ -1527,7 +1548,8 @@ function He(e) {
             stats: J(i, r, o),
             training: Array.isArray(n.training) ? n.training : void 0,
             trainingKey: typeof n.trainingKey == `string` ? n.trainingKey : void 0,
-            trainingWarning: typeof n.trainingWarning == `string` ? n.trainingWarning : void 0
+            trainingWarning: typeof n.trainingWarning == `string` ? n.trainingWarning : void 0,
+            spareNotes: cleanNotes(n.spareNotes)
         }
     } catch {
         return null
@@ -1697,6 +1719,7 @@ const ui = {
   solving: false,
   issuesOnly: false,
   picker: null,
+  spare: null,
   confirmOpen: false,
   confirmDate: "",
   teamView: "today",
@@ -2112,8 +2135,20 @@ function setSolve(board) {
   };
   state.data = data;
   state.solve = board;
+  ui.spare = null;
   state.storageOk = Y(data) && X(board);
   render();
+}
+
+function setSpareNote(label) {
+  if (!ui.spare || !state.solve) return;
+  const notes = { ...(state.solve.spareNotes || {}) };
+  const key = `${ui.spare.name}|${ui.spare.shift}`;
+  if (label) notes[key] = label;
+  else delete notes[key];
+  state.solve.spareNotes = cleanNotes(notes);
+  ui.spare = null;
+  setSolve(state.solve);
 }
 
 function selectDay(day) {
@@ -2807,38 +2842,39 @@ function viewRota() {
   </div>`;
 }
 
-function displayBoard(data, board, seats) {
-  const named = new Set();
+function displayCell(person, board, seats, shift) {
+  if (person.offline) return { text: "OFF", spare: false, red: true, train: false };
   for (const station of board.stations) {
-    for (const shift of [1, 2, 3]) {
-      const name = D(board.result[station], shift);
-      if (name) named.add(name);
-    }
+    if (sheetOn(board, ui.sheetMarks, person.name, station, shift)) return { text: station, spare: false, red: false, train: false };
   }
-  for (const seat of seats) named.add(seat.name);
-  const people = data.operators.filter((person) => !person.offline && (person.reg || named.has(person.name)));
-  const stationFor = (name, shift) => {
-    for (const station of board.stations) {
-      if (sheetOn(board, ui.sheetMarks, name, station, shift)) return station;
-    }
-    const seat = seats.find((item) => item.name === name && item.shift === shift);
-    return seat ? seat.station : "";
-  };
+  const seat = seats.find((item) => item.name === person.name && item.shift === shift);
+  if (seat) return { text: `T ${seat.station}`, spare: false, red: false, train: true };
+  const note = board.spareNotes && board.spareNotes[`${person.name}|${shift}`];
+  const text = note || (tt(person.name) ? "Float" : "OFF");
+  return { text, spare: true, red: text === "OFF", train: false };
+}
+
+function displayBoard(data, board, seats) {
+  const people = sheetPeople(data, board);
   const rows = people.map((person, row) => {
     const alt = row % 2 === 1 ? " alt" : "";
     const cells = [1, 2, 3].map((shift, index) => {
-      const value = stationFor(person.name, shift);
-      return `<td class="c${shift}${gridPicked(row, index + 1)}" data-r="${row}" data-c="${index + 1}" data-v="${esc(value)}">${esc(value)}</td>`;
+      const cell = displayCell(person, board, seats, shift);
+      const tone = cell.red ? "off" : cell.train ? "train" : cell.text === "Float" ? "float" : "plain";
+      const extra = cell.spare ? ` data-spare="1" data-name="${esc(person.name)}" data-shift="${shift}"` : "";
+      return `<td class="${tone}${cell.spare ? " spare" : ""}${gridPicked(row, index + 1)}"${extra} data-r="${row}" data-c="${index + 1}" data-v="${esc(cell.text)}">${esc(cell.text)}</td>`;
     }).join("");
     return `<tr class="${alt.trim()}"><td class="n${gridPicked(row, 0)}" data-r="${row}" data-c="0" data-v="${esc(person.name)}">${esc(person.name)}</td>${cells}</tr>`;
   }).join("");
-  return `<div class="display-sheet gridbox" data-grid="1"><table class="disp-people" data-testid="display-by-person"><colgroup><col style="width:34%"><col><col><col></colgroup><thead><tr><th class="name">Name</th><th class="h1">1st</th><th class="h2">2nd</th><th class="h3">3rd</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  return `<div class="display-sheet gridbox" data-grid="1"><table class="disp-people" data-testid="display-by-person"><colgroup><col style="width:34%"><col><col><col></colgroup><thead><tr><th class="nm">Name</th><th class="h1">1st</th><th class="h2">2nd</th><th class="h3">3rd</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 function displayView(data, board, seats) {
   if (!ui.display) return "";
   const day = N(data.selectedDay || "mon");
-  return `<div class="display" role="dialog" aria-modal="true" aria-label="Display rotation"><div class="display-bar"><p>${esc(day)}</p><div class="display-actions"><button type="button" data-act="copy-display">Copy</button><button type="button" class="go" data-act="close-display">Close</button></div></div><div class="display-fit">${displayBoard(data, board, seats)}</div></div>`;
+  const shiftName = ui.spare ? (ui.spare.shift === 1 ? "1st" : ui.spare.shift === 2 ? "2nd" : "3rd") : "";
+  const bar = ui.spare ? `<div class="spare-bar"><p>${esc(ui.spare.name)} · ${shiftName}</p><div class="spare-grid">${["Float", "WW", "ZP", "FAM", "OFF"].map((label) => `<button type="button" data-act="spare-note" data-note="${label}">${label}</button>`).join("")}<button type="button" class="clear" data-act="spare-clear">Clear</button></div></div>` : "";
+  return `<div class="display" role="dialog" aria-modal="true" aria-label="Display rotation"><div class="display-bar"><p>${esc(day)}</p><div class="display-actions"><button type="button" data-act="copy-display">Copy</button><button type="button" class="go" data-act="close-display">Close</button></div></div><div class="display-fit">${displayBoard(data, board, seats)}${bar}</div></div>`;
 }
 
 function overlays() {
@@ -3160,8 +3196,13 @@ function onClick(event) {
   }
   if (act === "close-display") {
     ui.display = false;
+    ui.spare = null;
     ui.gridRange = null;
     render();
+    return;
+  }
+  if (act === "spare-note" || act === "spare-clear") {
+    setSpareNote(act === "spare-note" ? button.dataset.note : "");
     return;
   }
   if (act === "copy-display") {
@@ -3667,6 +3708,11 @@ function finishGridPointer() {
   if ((drag.selecting && (drag.moved || drag.held)) || drag.moved) return;
   const cell = drag.root.querySelector(`[data-r="${drag.r}"][data-c="${drag.c}"]`);
   if (!cell) return;
+  if (cell.dataset.spare === "1" && cell.dataset.name) {
+    ui.spare = { name: cell.dataset.name, shift: Number(cell.dataset.shift) };
+    render();
+    return;
+  }
   if (cell.dataset.toggle === "1" && cell.dataset.name) {
     toggleSheet(cell.dataset.name, cell.dataset.station, Number(cell.dataset.shift));
     return;
@@ -3744,6 +3790,7 @@ document.addEventListener("contextmenu", (event) => {
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && ui.display) {
     ui.display = false;
+    ui.spare = null;
     ui.gridRange = null;
     render();
   }
