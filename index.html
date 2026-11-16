@@ -143,7 +143,23 @@ table { border-collapse: collapse; width: 100%; }
 .old .who { left: 28px; font-weight: 400; white-space: nowrap; }
 .box { width: 18px; height: 22px; border: 1px solid #bfbfbf; background: #fff; color: #000; font: 700 11px/20px Calibri, Arial, sans-serif; padding: 0; }
 .old .g1 { border-left: 2px solid #7f7f7f; }
-.picked { box-shadow: inset 0 0 0 2px #1d6f42; }
+.display { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; background: #fff; color: #000; }
+.display-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid #bfbfbf; padding: 4px 8px; }
+.display-bar p { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 600; }
+.display-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.display-actions button { min-height: 32px; border-radius: 8px; border: 1px solid #bfbfbf; background: #fff; color: #000; font-size: 14px; font-weight: 600; padding: 4px 8px; }
+.display-actions .go { background: #1d6f42; color: #fff; border-color: #1d6f42; }
+.display-fit { flex: 1; min-height: 0; overflow: hidden; }
+.display-inner { width: max-content; visibility: hidden; }
+.disp-new { border-collapse: collapse; background: #fff; color: #000; font-size: 16px; }
+.disp-new th, .disp-new td { padding: 8px 12px; border-top: 1px solid #bfbfbf; text-align: left; }
+.disp-new th.h1 { background: #fff59a; }
+.disp-new th.h2 { background: #7efbff; }
+.disp-new th.h3 { background: #c8f7c5; }
+.disp-new td.n { font-weight: 600; }
+.old-scroll.fill { max-height: none; overflow: visible; width: max-content; }
+.old-scroll.fill .old { font-size: 14px; }
+.old-scroll.fill td.box { height: 32px; width: auto; min-width: 28px; padding: 0 2px; font-size: 14px; line-height: 32px; }
 .freeze { pointer-events: none; }
 .gridbox { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: cell; }
 .slot-btn { min-height: 44px; width: 100%; text-align: left; background: transparent; border: 0; padding: 8px; overflow-wrap: anywhere; }
@@ -1697,6 +1713,7 @@ const ui = {
   zoneName: "",
   zoneMsg: "",
   rotaStyle: "new",
+  display: false,
   sheetMarks: { add: [], drop: [] },
   gridRange: null,
 };
@@ -2022,6 +2039,7 @@ function render() {
   apply();
   restoreFocus();
   requestAnimationFrame(apply);
+  requestAnimationFrame(fitDisplay);
 }
 
 function hydrate() {
@@ -2607,7 +2625,7 @@ function gridPicked(row, col) {
   return row >= r1 && row <= r2 && col >= c1 && col <= c2 ? " picked" : "";
 }
 
-function oldSheet(data, board, seats, changed) {
+function oldSheet(data, board, seats, changed, fill) {
   const people = sheetPeople(data, board);
   const counts = new Map();
   for (const person of people) {
@@ -2660,7 +2678,7 @@ function oldSheet(data, board, seats, changed) {
     const code = initials(person.name);
     return `<tr><td class="code${gridPicked(row, 0)}" data-r="${row}" data-c="0" data-v="${esc(code)}" data-sticky="1">${esc(code)}</td><td class="who${gridPicked(row, 1)}" data-r="${row}" data-c="1" data-v="${esc(person.name)}" data-sticky="1">${esc(person.name)}</td>${sessions}${stations}${floats}${vacs}</tr>`;
   }).join("");
-  return `<div class="old-scroll scroll gridbox" data-paste="rota" data-grid="1"><table class="old" data-testid="old-style-table"><thead><tr><th rowspan="2"></th><th rowspan="2" class="who">Name</th><th colspan="3">Session</th>${headStations}<th class="stn" colspan="3" rowspan="2">Float</th><th class="stn" colspan="3" rowspan="2">Vac</th></tr><tr><th class="s1">1</th><th class="s2">2</th><th class="s3">3</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  return `<div class="old-scroll scroll gridbox${fill ? " fill" : ""}" data-paste="rota" data-grid="1"><table class="old" data-testid="old-style-table"><thead><tr><th rowspan="2"></th><th rowspan="2" class="who">Name</th><th colspan="3">Session</th>${headStations}<th class="stn" colspan="3" rowspan="2">Float</th><th class="stn" colspan="3" rowspan="2">Vac</th></tr><tr><th class="s1">1</th><th class="s2">2</th><th class="s3">3</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 function viewRota() {
@@ -2763,16 +2781,17 @@ function viewRota() {
         <div class="style-switch" role="group" aria-label="Rotation layout">
           <button type="button" data-act="rota-style" data-style="new" class="${ui.rotaStyle === "new" ? "on" : ""}" aria-pressed="${ui.rotaStyle === "new"}">New</button>
           <button type="button" data-act="rota-style" data-style="old" class="${ui.rotaStyle === "old" ? "on" : ""}" aria-pressed="${ui.rotaStyle === "old"}">Old</button>
+          <button type="button" data-act="display" class="">Display</button>
         </div>
       </div>
       ${ui.rotaStyle === "new" ? `<label class="check small right"><input type="checkbox" data-act="issues" ${ui.issuesOnly ? "checked" : ""}> Issues only</label>` : ""}
       ${changed.size ? `<p class="fine">A small dot marks a name that changed.</p>` : ""}
-      ${ui.rotaStyle === "old" ? oldSheet(data, board, seats, changed) : `<div class="scroll gridbox" data-paste="rota" data-grid="1">
+      ${ui.display ? "" : (ui.rotaStyle === "old" ? oldSheet(data, board, seats, changed) : `<div class="scroll gridbox" data-paste="rota" data-grid="1">
         <table class="rota" data-testid="result-table">
-          <thead><tr><th>Stn</th><th>S1</th><th>S2</th><th>S3</th></tr></thead>
+          <thead><tr><th>Stn</th><th>1st</th><th>2nd</th><th>3rd</th></tr></thead>
           <tbody>${bodyRows}${empty}</tbody>
         </table>
-      </div>`}
+      </div>`)}
       <p class="fine">${ui.rotaStyle === "old" ? "Click a box and drag to the last box, the same as Excel. Only those cells are copied. Ctrl+C, then paste. A click without dragging still adds or removes a 1. On a phone, press and hold, then drag." : "Click a name and drag to the last name, the same as Excel. Only those cells are copied. Ctrl+C, then paste. On a phone, press and hold, then drag."}</p>
     </section>
     <div class="grid2">
@@ -2780,7 +2799,27 @@ function viewRota() {
       <button type="button" class="btn" data-act="copy-message">Copy message</button>
     </div>
     ${board.stats && board.stats.filled > 0 ? `<button type="button" class="btn primary block" data-act="open-confirm">Confirm date</button>` : ""}
+    ${displayView(data, board, seats, changed)}
   </div>`;
+}
+
+function displayNew(board) {
+  const rows = board.stations.map((station, row) => {
+    const cells = [1, 2, 3].map((shift, index) => {
+      const name = D(board.result[station], shift) || "";
+      return `<td class="${gridPicked(row, index + 1).trim()}" data-r="${row}" data-c="${index + 1}" data-v="${esc(name)}">${esc(name)}</td>`;
+    }).join("");
+    return `<tr><td class="n${gridPicked(row, 0)}" data-r="${row}" data-c="0" data-v="${esc(station)}">${esc(station)}</td>${cells}</tr>`;
+  }).join("");
+  return `<div class="gridbox" data-grid="1"><table class="disp-new" data-testid="display-new"><thead><tr><th>Station</th><th class="h1">1st</th><th class="h2">2nd</th><th class="h3">3rd</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function displayView(data, board, seats, changed) {
+  if (!ui.display) return "";
+  const day = N(data.selectedDay || "mon");
+  const style = ui.rotaStyle === "old" ? "Old style" : "New style";
+  const sheet = ui.rotaStyle === "old" ? oldSheet(data, board, seats, changed, true) : displayNew(board);
+  return `<div class="display" role="dialog" aria-modal="true" aria-label="Display rotation"><div class="display-bar"><p>${esc(day)} · ${style}</p><div class="display-actions"><button type="button" data-act="copy-display">Copy</button><button type="button" class="go" data-act="close-display">Close</button></div></div><div class="display-fit" data-fit><div class="display-inner" data-fit-inner>${sheet}</div></div></div>`;
 }
 
 function overlays() {
@@ -3091,6 +3130,26 @@ function onClick(event) {
   if (act === "rota-style") {
     ui.rotaStyle = button.dataset.style === "old" ? "old" : "new";
     ui.gridRange = null;
+    render();
+    return;
+  }
+  if (act === "display") {
+    ui.display = true;
+    ui.gridRange = null;
+    render();
+    return;
+  }
+  if (act === "close-display") {
+    ui.display = false;
+    ui.gridRange = null;
+    render();
+    return;
+  }
+  if (act === "copy-display") {
+    const root = document.querySelector("[data-grid]");
+    const text = ui.gridRange ? rangeText(root, ui.gridRange) : wholeGrid(root);
+    const copied = text ? copyExec(text) : false;
+    setMsg(copied ? "Copied. Go to Excel and paste." : "Copy was blocked. Select the cells and press Ctrl+C.", copied ? "ok" : "err");
     render();
     return;
   }
@@ -3527,6 +3586,60 @@ function rangeText(root, range) {
   }
   return rows.join("\n");
 }
+function wholeGrid(root) {
+  if (!root) return "";
+  const rows = new Map();
+  root.querySelectorAll("[data-r]").forEach((cell) => {
+    const r = Number(cell.getAttribute("data-r"));
+    const c = Number(cell.getAttribute("data-c"));
+    if (!Number.isFinite(r) || !Number.isFinite(c)) return;
+    if (!rows.has(r)) rows.set(r, new Map());
+    rows.get(r).set(c, cell.getAttribute("data-v") || "");
+  });
+  return [...rows.keys()].sort((a, b) => a - b).map((r) => {
+    const cols = rows.get(r);
+    const keys = [...cols.keys()].sort((a, b) => a - b);
+    const start = keys[0] ?? 0;
+    const end = keys[keys.length - 1] ?? 0;
+    const out = [];
+    for (let c = start; c <= end; c++) out.push(cols.get(c) || "");
+    return out.join("\t");
+  }).join("\n");
+}
+function copyExec(text) {
+  const box = document.createElement("textarea");
+  box.value = text;
+  box.setAttribute("readonly", "");
+  box.style.position = "fixed";
+  box.style.left = "0";
+  box.style.top = "0";
+  box.style.fontSize = "16px";
+  box.style.opacity = "0";
+  document.body.appendChild(box);
+  box.focus();
+  box.select();
+  let copied = false;
+  try { copied = document.execCommand("copy"); } catch { copied = false; }
+  box.remove();
+  return copied;
+}
+function fitDisplay() {
+  const frame = document.querySelector("[data-fit]");
+  const inner = document.querySelector("[data-fit-inner]");
+  if (!frame || !inner) return;
+  const table = inner.querySelector("table");
+  if (!table) return;
+  const width = table.offsetWidth;
+  const height = table.offsetHeight;
+  const boxW = frame.clientWidth;
+  const boxH = frame.clientHeight;
+  if (width < 1 || height < 1 || boxW < 1 || boxH < 1) return;
+  const scale = Math.min(boxW / width, boxH / height);
+  inner.style.transform = `scale(${scale})`;
+  inner.style.transformOrigin = "top left";
+  inner.style.visibility = "visible";
+  inner.style.width = "max-content";
+}
 function finishGridPointer() {
   const drag = gridDrag;
   gridDrag = null;
@@ -3609,6 +3722,7 @@ document.addEventListener("pointercancel", () => {
 document.addEventListener("contextmenu", (event) => {
   if (event.target.closest && event.target.closest("[data-grid]")) event.preventDefault();
 });
+window.addEventListener("resize", fitDisplay);
 document.addEventListener("keydown", (event) => {
   if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "c") return;
   const target = event.target;
