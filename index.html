@@ -149,14 +149,18 @@ table { border-collapse: collapse; width: 100%; }
 .display-actions { display: flex; gap: 8px; flex-shrink: 0; }
 .display-actions button { min-height: 32px; border-radius: 8px; border: 1px solid #bfbfbf; background: #fff; color: #000; font-size: 14px; font-weight: 600; padding: 4px 8px; }
 .display-actions .go { background: #1d6f42; color: #fff; border-color: #1d6f42; }
-.display-fit { flex: 1; min-height: 0; overflow: hidden; }
-.display-inner { width: max-content; visibility: hidden; }
-.disp-new { border-collapse: collapse; background: #fff; color: #000; font-size: 16px; }
-.disp-new th, .disp-new td { padding: 8px 12px; border-top: 1px solid #bfbfbf; text-align: left; }
-.disp-new th.h1 { background: #fff59a; }
-.disp-new th.h2 { background: #7efbff; }
-.disp-new th.h3 { background: #c8f7c5; }
-.disp-new td.n { font-weight: 600; }
+.display-fit { position: relative; flex: 1; min-height: 0; }
+.display-sheet { position: absolute; inset: 0; height: 100%; width: 100%; overflow: hidden; background: #fff; color: #000; container-type: size; }
+.disp-people { height: 100%; width: 100%; border-collapse: collapse; text-align: center; table-layout: fixed; background: #fff; color: #000; font-size: min(2.2cqh, 4cqw); }
+.disp-people th, .disp-people td { border: 1px solid #bfbfbf; padding: 0 4px; font-weight: 600; }
+.disp-people th.name, .disp-people td.n { text-align: left; white-space: nowrap; background: #fff; }
+.disp-people tr.alt td.n { background: #f0f0f0; }
+.disp-people th.h1, .disp-people td.c1 { background: #fff59a; }
+.disp-people th.h2, .disp-people td.c2 { background: #7efbff; }
+.disp-people th.h3, .disp-people td.c3 { background: #c8f7c5; }
+.disp-people tr.alt td.c1 { background: #f3e06a; }
+.disp-people tr.alt td.c2 { background: #5ee6f0; }
+.disp-people tr.alt td.c3 { background: #a6e8a2; }
 .old-scroll.fill { max-height: none; overflow: visible; width: max-content; }
 .old-scroll.fill .old { font-size: 14px; }
 .old-scroll.fill td.box { height: 32px; width: auto; min-width: 28px; padding: 0 2px; font-size: 14px; line-height: 32px; }
@@ -2799,27 +2803,42 @@ function viewRota() {
       <button type="button" class="btn" data-act="copy-message">Copy message</button>
     </div>
     ${board.stats && board.stats.filled > 0 ? `<button type="button" class="btn primary block" data-act="open-confirm">Confirm date</button>` : ""}
-    ${displayView(data, board, seats, changed)}
+    ${displayView(data, board, seats)}
   </div>`;
 }
 
-function displayNew(board) {
-  const rows = board.stations.map((station, row) => {
+function displayBoard(data, board, seats) {
+  const named = new Set();
+  for (const station of board.stations) {
+    for (const shift of [1, 2, 3]) {
+      const name = D(board.result[station], shift);
+      if (name) named.add(name);
+    }
+  }
+  for (const seat of seats) named.add(seat.name);
+  const people = data.operators.filter((person) => !person.offline && (person.reg || named.has(person.name)));
+  const stationFor = (name, shift) => {
+    for (const station of board.stations) {
+      if (sheetOn(board, ui.sheetMarks, name, station, shift)) return station;
+    }
+    const seat = seats.find((item) => item.name === name && item.shift === shift);
+    return seat ? seat.station : "";
+  };
+  const rows = people.map((person, row) => {
+    const alt = row % 2 === 1 ? " alt" : "";
     const cells = [1, 2, 3].map((shift, index) => {
-      const name = D(board.result[station], shift) || "";
-      return `<td class="${gridPicked(row, index + 1).trim()}" data-r="${row}" data-c="${index + 1}" data-v="${esc(name)}">${esc(name)}</td>`;
+      const value = stationFor(person.name, shift);
+      return `<td class="c${shift}${gridPicked(row, index + 1)}" data-r="${row}" data-c="${index + 1}" data-v="${esc(value)}">${esc(value)}</td>`;
     }).join("");
-    return `<tr><td class="n${gridPicked(row, 0)}" data-r="${row}" data-c="0" data-v="${esc(station)}">${esc(station)}</td>${cells}</tr>`;
+    return `<tr class="${alt.trim()}"><td class="n${gridPicked(row, 0)}" data-r="${row}" data-c="0" data-v="${esc(person.name)}">${esc(person.name)}</td>${cells}</tr>`;
   }).join("");
-  return `<div class="gridbox" data-grid="1"><table class="disp-new" data-testid="display-new"><thead><tr><th>Station</th><th class="h1">1st</th><th class="h2">2nd</th><th class="h3">3rd</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  return `<div class="display-sheet gridbox" data-grid="1"><table class="disp-people" data-testid="display-by-person"><colgroup><col style="width:34%"><col><col><col></colgroup><thead><tr><th class="name">Name</th><th class="h1">1st</th><th class="h2">2nd</th><th class="h3">3rd</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
-function displayView(data, board, seats, changed) {
+function displayView(data, board, seats) {
   if (!ui.display) return "";
   const day = N(data.selectedDay || "mon");
-  const style = ui.rotaStyle === "old" ? "Old style" : "New style";
-  const sheet = ui.rotaStyle === "old" ? oldSheet(data, board, seats, changed, true) : displayNew(board);
-  return `<div class="display" role="dialog" aria-modal="true" aria-label="Display rotation"><div class="display-bar"><p>${esc(day)} · ${style}</p><div class="display-actions"><button type="button" data-act="copy-display">Copy</button><button type="button" class="go" data-act="close-display">Close</button></div></div><div class="display-fit" data-fit><div class="display-inner" data-fit-inner>${sheet}</div></div></div>`;
+  return `<div class="display" role="dialog" aria-modal="true" aria-label="Display rotation"><div class="display-bar"><p>${esc(day)}</p><div class="display-actions"><button type="button" data-act="copy-display">Copy</button><button type="button" class="go" data-act="close-display">Close</button></div></div><div class="display-fit">${displayBoard(data, board, seats)}</div></div>`;
 }
 
 function overlays() {
@@ -3722,7 +3741,13 @@ document.addEventListener("pointercancel", () => {
 document.addEventListener("contextmenu", (event) => {
   if (event.target.closest && event.target.closest("[data-grid]")) event.preventDefault();
 });
-window.addEventListener("resize", fitDisplay);
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && ui.display) {
+    ui.display = false;
+    ui.gridRange = null;
+    render();
+  }
+});
 document.addEventListener("keydown", (event) => {
   if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "c") return;
   const target = event.target;
