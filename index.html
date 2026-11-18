@@ -2253,12 +2253,6 @@ function unpinAll() {
   setMsg("Pins lifted. The names stay until you press Clear.", "ok");
   render();
 }
-  history.push({
-    solve: state.solve ? structuredClone(state.solve) : null,
-    pins: structuredClone(state.data.pins),
-  });
-  if (history.length > 40) history.shift();
-}
 
 function remember() {
   history.push({
