@@ -2241,6 +2241,25 @@ function addZone(name) {
   return "ok";
 }
 
+function unpinAll() {
+  if (ui.solving || !state.data.pins.length) return;
+  remember();
+  const data = structuredClone(state.data);
+  data.pins = [];
+  const plan = data.dayPlans[data.selectedDay];
+  if (plan) plan.pins = [];
+  state.data = data;
+  state.storageOk = Y(data);
+  setMsg("Pins lifted. The names stay until you press Clear.", "ok");
+  render();
+}
+  history.push({
+    solve: state.solve ? structuredClone(state.solve) : null,
+    pins: structuredClone(state.data.pins),
+  });
+  if (history.length > 40) history.shift();
+}
+
 function remember() {
   history.push({
     solve: state.solve ? structuredClone(state.solve) : null,
@@ -2806,7 +2825,7 @@ function viewRota() {
     <button type="button" class="btn primary block" data-testid="solve" data-act="solve" ${ui.solving ? "disabled" : ""}>${ui.solving ? "Solving…" : "Solve rotation"}</button>
     <button type="button" class="btn block" data-testid="repair" data-act="cover" ${ui.solving || !state.solve ? "disabled" : ""}>Cover absence</button>
     <div class="grid2">
-      <button type="button" class="btn" data-act="solve" ${ui.solving ? "disabled" : ""}>Reshuffle</button>
+      <button type="button" class="btn" data-testid="unpin" data-act="unpin" ${ui.solving || data.pins.length === 0 ? "disabled" : ""}>Unpin all</button>
       <button type="button" class="btn" data-testid="back" data-act="back" ${ui.solving || history.length === 0 ? "disabled" : ""}>${history.length ? `Back (${history.length})` : "Back"}</button>
       <button type="button" class="btn span2" data-act="clear">Clear result</button>
     </div>
@@ -2993,6 +3012,10 @@ function viewCover() {
   const short = rows.filter((row) => row.risk !== "ok");
   const ok = rows.filter((row) => row.risk === "ok");
   const inn = ce(state.data).length;
+  const shortJobs = state.data.operators.map((person) => ({
+    name: person.name,
+    jobs: person.quals ? Object.keys(person.quals).filter((station) => person.quals[station] && !(person.blocked && person.blocked[station])) : [],
+  })).filter((person) => person.jobs.length < 3);
   const labels = { ok: "OK", tight: "Tight", critical: "1 person", none: "No cover" };
   const list = (items) => items.map((row) => `<li class="card">
     <div class="row"><b class="station">${esc(row.station)}</b><span class="muted">${row.active} active · ${row.total} qualified</span><span class="pill ${row.risk}">${labels[row.risk]}</span></div>
@@ -3002,6 +3025,10 @@ function viewCover() {
     <section class="card"><h2>Station coverage</h2><p class="muted">Active means in today, not offline, and qualified. ${inn} people in. Short stations are listed first.</p></section>
     ${short.length === 0 ? `<section class="card"><p class="muted">Every station has at least four people in.</p></section>` : `<section class="stack tight"><h2 class="warn-text">Short · ${short.length}</h2><ul class="stack tight">${list(short)}</ul></section>`}
     ${ok.length ? `<section class="stack tight"><h2>Comfortable · ${ok.length}</h2><ul class="stack tight">${list(ok)}</ul></section>` : ""}
+    <section class="stack tight">
+      <h2 class="warn-text">Short of 3 jobs · ${shortJobs.length}</h2>
+      ${shortJobs.length === 0 ? `<section class="card"><p class="muted">Everyone has at least 3 jobs.</p></section>` : `<ul class="stack tight">${shortJobs.map((person) => `<li class="card"><div class="row"><b>${esc(person.name)}</b><span class="pill tight">${person.jobs.length} of 3</span></div><p class="muted">${person.jobs.length ? esc(person.jobs.join(", ")) : "No active jobs."}</p></li>`).join("")}</ul>`}
+    </section>
   </div>`;
 }
 
@@ -3109,7 +3136,7 @@ function viewData() {
         <li>Rota — tap Mon to Fri, then Solve rotation. That fills only the day you selected. Change Who is in, tap the next day, and solve again. You can build the whole week in one sitting.</li>
         <li>If someone calls in sick, mark them Off and clear any training. Then tap Cover absence. It only moves people who have to move to cover every job, and it keeps three-job days where it can. A small dot marks a name that changed.</li>
         <li>Solve aims for three different jobs and still covers every station. Later days look at the week, but it will not spoil the day’s rotation just to move one person onto a new job.</li>
-        <li>Tap a slot to pin a name, or copy the operator sheet in Excel and paste it onto the rota. A star is a pin. Reshuffle tries another mix. Back returns to the previous one.</li>
+        <li>Tap a slot to pin a name, or copy the operator sheet in Excel and paste it onto the rota. A star is a pin. Unpin all lifts the pins and leaves the names. Back returns to the previous one.</li>
         <li>Week shows fairness from the Monday to Friday rotas. You do not need to confirm a day. Tap a name to see their jobs, most sessions first, then the jobs they have not been on.</li>
         <li>Cover shows thin stations. Train suggests who to teach so more people can rotate. Changes save on this phone. Save a file if you want a backup. Nothing is uploaded.</li>
       </ol>
@@ -3127,7 +3154,7 @@ function viewHelp() {
     ["3. Skills", "A green tick means they can do that job. A red cross means they are qualified but not to be used. T means they are learning it."],
     ["4. Solve the day", "Open Rota. Tap Mon to Fri, then Solve rotation. Change who is in, tap the next day, and solve again. Do the whole week this way."],
     ["5. Someone calls in sick", "Mark them Off. Set any T1, T2 or T3 back to In. Tap Cover absence. It keeps people where they are and fills the gaps. A small dot shows a name that moved."],
-    ["6. Change a name", "Tap a slot and pick a name. A star means that seat is pinned. Paste names from the Excel sheet if you want. Reshuffle tries another mix. Back goes to the one before."],
+    ["6. Change a name", "Tap a slot and pick a name. A star means that seat is pinned. Paste names from the Excel sheet if you want. Unpin all lifts the pins and leaves the names. Back goes to the one before."],
     ["7. Week, Cover and Train", "Week shows how often each person has done each job. Cover shows jobs with too few people. Train suggests who to teach."],
     ["8. Saving", "Use the Zone list at the top. Trim 4 A is your shift and is already loaded. Each zone has an A shift and a B shift. The others start empty. Put that shift’s team in on Data or Team. Each one keeps its own data. Changes save on this phone. On Data, use Save file if you want a backup. Nothing is sent anywhere."],
   ];
@@ -3223,6 +3250,10 @@ function onClick(event) {
   }
   if (act === "back") {
     goBack();
+    return;
+  }
+  if (act === "unpin") {
+    unpinAll();
     return;
   }
   if (act === "clear") {
