@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- pages 21 nov scroll -->
+<!-- pages 21 nov float -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>G.Cole Rotation Optimizer</title>
@@ -1743,6 +1743,7 @@ const ui = {
   rotaStyle: "new",
   display: false,
   sheetMarks: { add: [], drop: [] },
+  floatKeys: {},
   gridRange: null,
 };
 
@@ -2137,6 +2138,7 @@ function setSolve(board) {
   state.data = data;
   state.solve = board;
   ui.spare = null;
+  ui.floatKeys = {};
   state.storageOk = Y(data) && X(board);
   render();
 }
@@ -2334,6 +2336,7 @@ async function runSolve() {
       training: bestTrain.seats,
       trainingKey: ye(data.operators),
       trainingWarning: bestTrain.warning,
+      spareNotes: storedFloats(state.solve && state.solve.spareNotes),
     });
   } catch (err) {
     if (token !== solveGen) return;
@@ -2417,6 +2420,7 @@ async function runCover() {
       trainingKey: ye(data.operators),
       trainingWarning: train.warning,
       changed,
+      spareNotes: storedFloats(current.spareNotes),
     });
   } catch (err) {
     if (token !== solveGen) return;
@@ -2640,6 +2644,55 @@ function sheetOn(board, marks, name, station, shift) {
   return D(board.result[station], shift) === name;
 }
 
+function sessionJobs(board, seats, name, shift) {
+  let count = 0;
+  for (const station of board.stations) {
+    const on = sheetOn(board, ui.sheetMarks, name, station, shift);
+    const train = seats.some((seat) => seat.name === name && seat.station === station && seat.shift === shift);
+    if (on || train) count += 1;
+  }
+  return count;
+}
+
+function floatOn(board, name, shift) {
+  const key = `${name}|${shift}`;
+  if (ui.floatKeys && Object.prototype.hasOwnProperty.call(ui.floatKeys, key)) return !!ui.floatKeys[key];
+  return !!(board.spareNotes && board.spareNotes[key] === "Float");
+}
+
+function storedFloats(notes) {
+  const out = { ...(notes || {}) };
+  for (const [key, on] of Object.entries(ui.floatKeys || {})) {
+    if (on) out[key] = "Float";
+    else delete out[key];
+  }
+  return cleanNotes(out);
+}
+
+function toggleOldFloat(name, shift) {
+  const board = boardNow();
+  const seats = currentSeats();
+  if (sessionJobs(board, seats, name, shift) > 0) return;
+  const person = state.data.operators.find((item) => item.name === name);
+  if (!person || person.offline) return;
+  const key = `${name}|${shift}`;
+  const next = !floatOn(board, name, shift);
+  ui.floatKeys[key] = next;
+  if (state.solve) {
+    state.solve.spareNotes = storedFloats(state.solve.spareNotes);
+    setSolve(state.solve);
+    return;
+  }
+  render();
+}
+
+function currentSeats() {
+  const data = state.data;
+  const live = K(data.operators, data.stations, data.pins);
+  const key = ye(data.operators);
+  return state.solve && state.solve.trainingKey === key && state.solve.training ? state.solve.training : live.seats;
+}
+
 function toggleSheet(name, station, shift) {
   const board = boardNow();
   const key = `${name}|${station}|${shift}`;
@@ -2651,6 +2704,14 @@ function toggleSheet(name, station, shift) {
     if (current) drop.push(key);
   } else if (!current) add.push(key);
   ui.sheetMarks = { add, drop };
+  if (sessionJobs(board, currentSeats(), name, shift) > 0 && floatOn(board, name, shift)) {
+    ui.floatKeys[`${name}|${shift}`] = false;
+    if (state.solve) state.solve.spareNotes = storedFloats(state.solve.spareNotes);
+  }
+  if (state.solve && ui.floatKeys[`${name}|${shift}`] === false) {
+    setSolve(state.solve);
+    return;
+  }
   render();
 }
 
@@ -2700,10 +2761,11 @@ function oldSheet(data, board, seats, changed, fill) {
   const rows = people.map((person, row) => {
     const blocked = !!(person.b1 && person.b2 && person.b3);
     const sessions = [1, 2, 3].map((shift) => {
-      const on = board.stations.some((station) => sheetOn(board, ui.sheetMarks, person.name, station, shift));
-      const value = on ? "1" : "0";
+      const count = sessionJobs(board, seats, person.name, shift);
+      const value = String(count);
+      const tone = count >= 2 ? "clash" : count === 1 ? "here" : "";
       const col = shift + 1;
-      return `<td class="box ${on ? "here" : ""} ${shift === 1 ? "g1" : ""}${gridPicked(row, col)}" data-r="${row}" data-c="${col}" data-v="${value}">${value}</td>`;
+      return `<td class="box ${tone} ${shift === 1 ? "g1" : ""}${gridPicked(row, col)}" data-r="${row}" data-c="${col}" data-v="${value}">${value}</td>`;
     }).join("");
     const stations = board.stations.map((station, stationIndex) => {
       const qualified = !!(person.quals && person.quals[station] && !(person.blocked && person.blocked[station]));
@@ -2725,11 +2787,12 @@ function oldSheet(data, board, seats, changed, fill) {
       return `<td class="box ${index % 3 === 0 ? "g1" : ""}${gridPicked(row, col)}" data-r="${row}" data-c="${col}" data-v=""></td>`;
     }).join("");
     const floats = [1, 2, 3].map((shift) => {
-      const placed = board.stations.some((station) => sheetOn(board, ui.sheetMarks, person.name, station, shift));
-      const training = seats.some((seat) => seat.name === person.name && seat.shift === shift);
-      const spare = !person.offline && person.reg && !placed && !training;
+      const jobs = sessionJobs(board, seats, person.name, shift);
+      const can = jobs === 0 && !person.offline;
+      const on = can && floatOn(board, person.name, shift);
       const col = floatStart + shift - 1;
-      return `<td class="box ${spare ? `c${shift}` : ""} ${shift === 1 ? "g1" : ""}${gridPicked(row, col)}" data-r="${row}" data-c="${col}" data-v=""></td>`;
+      const mark = can ? ` data-float="1" data-name="${esc(person.name)}" data-shift="${shift}"` : "";
+      return `<td class="box ${on ? `c${shift}` : ""} ${shift === 1 ? "g1" : ""}${gridPicked(row, col)}" data-r="${row}" data-c="${col}" data-v="${on ? "1" : ""}"${mark}>${on ? "1" : ""}</td>`;
     }).join("");
     const vacs = [1, 2, 3].map((shift) => {
       const col = vacStart + shift - 1;
@@ -3746,6 +3809,10 @@ function finishGridPointer() {
   if ((drag.selecting && (drag.moved || drag.held)) || drag.moved) return;
   const cell = drag.root.querySelector(`[data-r="${drag.r}"][data-c="${drag.c}"]`);
   if (!cell) return;
+  if (cell.dataset.float === "1" && cell.dataset.name) {
+    toggleOldFloat(cell.dataset.name, Number(cell.dataset.shift));
+    return;
+  }
   if (cell.dataset.spare === "1" && cell.dataset.name) {
     ui.spare = { name: cell.dataset.name, shift: Number(cell.dataset.shift) };
     render();
