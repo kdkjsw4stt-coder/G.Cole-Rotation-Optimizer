@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- pages 21 nov fit -->
+<!-- pages 21 nov scroll -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>G.Cole Rotation Optimizer</title>
@@ -45,18 +45,6 @@ b { font-weight: 600; }
 @media (min-width: 800px) {
   .wrap { width: 100%; max-width: none; }
 }
-body.rota-fit { height: 100dvh; overflow: hidden; }
-body.rota-fit #app { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
-body.rota-fit .top { flex-shrink: 0; }
-body.rota-fit .main { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; padding-bottom: 8px; }
-.stack.fit { flex: 1; min-height: 0; overflow: hidden; }
-.fit-controls { max-height: 42%; flex-shrink: 0; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
-.card.fit-card { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-.fit-card > .row, .fit-card > .check, .fit-card > .fine { flex-shrink: 0; }
-.fit-sheet { flex: 1; min-height: 0; overflow: hidden; }
-.fit-inner { width: max-content; visibility: hidden; }
-.rota.wide { font-size: 14px; }
-.stack.fit > .grid2, .stack.fit > .btn { flex-shrink: 0; }
 .top { position: sticky; top: 0; z-index: 20; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--canvas) 94%, transparent); backdrop-filter: blur(10px); padding: 4px 12px 8px; }
 .brand { margin: 0; text-align: right; font-size: 12px; color: var(--muted); }
 .zonebar { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
@@ -2079,11 +2067,7 @@ function render() {
   apply();
   restoreFocus();
   requestAnimationFrame(apply);
-  requestAnimationFrame(() => {
-    fitDisplay();
-    fitRotaSheet();
-  });
-  document.body.classList.toggle("rota-fit", state.tab === "rota" && ui.rotaStyle === "new" && window.matchMedia("(min-width: 800px)").matches);
+  requestAnimationFrame(fitDisplay);
 }
 
 function hydrate() {
@@ -2842,14 +2826,8 @@ function viewRota() {
     return `<tr><td class="rota-name${gridPicked(row, 0)}" data-r="${row}" data-c="0" data-v="${esc(station)}">${esc(station)}</td>${cells}</tr>`;
   }).join("");
   const empty = rows.length === 0 ? `<tr><td colspan="4" class="muted pad">No repeats or empty slots.</td></tr>` : "";
-  const fit = ui.rotaStyle === "new" && window.matchMedia("(min-width: 800px)").matches;
-  const sheet = ui.display ? "" : (ui.rotaStyle === "old" ? oldSheet(data, board, seats, changed) : `<div class="${fit ? "fit-sheet" : "scroll"} gridbox" data-paste="rota" data-grid="1"${fit ? " data-fit-rota" : ""}>${fit ? `<div class="fit-inner" data-fit-inner>` : ""}
-        <table class="rota${fit ? " wide" : ""}" data-testid="result-table">
-          <thead><tr><th>Stn</th><th>1st</th><th>2nd</th><th>3rd</th></tr></thead>
-          <tbody>${bodyRows}${empty}</tbody>
-        </table>
-      ${fit ? "</div>" : ""}</div>`);
-  const controls = `<div class="days">${days}</div>
+  return `<div class="stack">
+    <div class="days">${days}</div>
     ${trainBox}
     <button type="button" class="btn primary block" data-testid="solve" data-act="solve" ${ui.solving ? "disabled" : ""}>${ui.solving ? "Solving…" : "Solve rotation"}</button>
     <button type="button" class="btn block" data-testid="repair" data-act="cover" ${ui.solving || !state.solve ? "disabled" : ""}>Cover absence</button>
@@ -2861,10 +2839,8 @@ function viewRota() {
     <label class="check"><input type="checkbox" data-act="avoid" ${data.avoidYesterdayEnabled ? "checked" : ""}> Avoid yesterday's stations</label>
     ${statusLine(ui.rotaMsg, ui.rotaTone)}
     <p class="muted">${inn} in · ${offline} offline · ${data.stations.length} stations.${esc(cover)}</p>
-    ${stats}`;
-  return `<div class="stack${fit ? " fit" : ""}">
-    ${fit ? `<div class="fit-controls">${controls}</div>` : controls}
-    <section class="card flush${fit ? " fit-card" : ""}">
+    ${stats}
+    <section class="card flush">
       <div class="row spread">
         <h2>${ui.rotaStyle === "old" ? "Old style rotation" : "New style rotation"}</h2>
         <div class="style-switch" role="group" aria-label="Rotation layout">
@@ -2875,7 +2851,12 @@ function viewRota() {
       </div>
       ${ui.rotaStyle === "new" ? `<label class="check small right"><input type="checkbox" data-act="issues" ${ui.issuesOnly ? "checked" : ""}> Issues only</label>` : ""}
       ${changed.size ? `<p class="fine">A small dot marks a name that changed.</p>` : ""}
-      ${sheet}
+      ${ui.display ? "" : (ui.rotaStyle === "old" ? oldSheet(data, board, seats, changed) : `<div class="scroll gridbox" data-paste="rota" data-grid="1">
+        <table class="rota" data-testid="result-table">
+          <thead><tr><th>Stn</th><th>1st</th><th>2nd</th><th>3rd</th></tr></thead>
+          <tbody>${bodyRows}${empty}</tbody>
+        </table>
+      </div>`)}
       <p class="fine">${ui.rotaStyle === "old" ? "Click a box and drag to the last box, the same as Excel. Only those cells are copied. Ctrl+C, then paste. A click without dragging still adds or removes a 1. On a phone, press and hold, then drag." : "Click a name and drag to the last name, the same as Excel. Only those cells are copied. Ctrl+C, then paste. On a phone, press and hold, then drag."}</p>
     </section>
     <div class="grid2">
@@ -3740,28 +3721,6 @@ function copyExec(text) {
   box.remove();
   return copied;
 }
-function fitRotaSheet() {
-  const frame = document.querySelector("[data-fit-rota]");
-  const inner = document.querySelector("[data-fit-inner]");
-  if (!frame || !inner) return;
-  const table = inner.querySelector("table");
-  if (!table) return;
-  const boxW = frame.clientWidth;
-  const boxH = frame.clientHeight;
-  if (boxW < 1 || boxH < 1) return;
-  table.style.width = `${boxW}px`;
-  let height = table.offsetHeight;
-  if (height < 1) return;
-  let scale = boxH / height;
-  table.style.width = `${boxW / scale}px`;
-  height = table.offsetHeight;
-  if (height > 0) scale = boxH / height;
-  inner.style.transform = `scale(${scale})`;
-  inner.style.transformOrigin = "top left";
-  inner.style.visibility = "visible";
-  inner.style.width = "max-content";
-}
-
 function fitDisplay() {
   const frame = document.querySelector("[data-fit]");
   const inner = document.querySelector("[data-fit-inner]");
@@ -4026,10 +3985,6 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-window.matchMedia("(min-width: 800px)").addEventListener("change", () => {
-  if (state.ready && state.tab === "rota") render();
-});
-window.addEventListener("resize", fitRotaSheet);
 hydrate();
 
 </script>
