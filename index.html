@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- pages -->
+<!-- pages 21 nov -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>G.Cole Rotation Optimizer</title>
@@ -2690,13 +2690,18 @@ function oldSheet(data, board, seats, changed, fill) {
       }
     }
   }
-  const floatStart = 5 + board.stations.length * 3;
-  const headStations = board.stations.map((station) => `<th class="stn" colspan="3">${esc(station)}</th>`).join("");
+  const slots = state.zoneId === "trim-4-b" ? 25 : board.stations.length;
+  const pad = Math.max(0, slots - board.stations.length);
+  const floatStart = 5 + slots * 3;
+  const vacStart = floatStart + 3;
+  const absStart = vacStart + 3;
+  const headStations = board.stations.map((station) => `<th class="stn" colspan="3" rowspan="2">${esc(station)}</th>`).join("");
+  const headPad = Array.from({ length: pad }, () => `<th class="stn" colspan="3" rowspan="2"></th>`).join("");
   const rows = people.map((person, row) => {
     const blocked = !!(person.b1 && person.b2 && person.b3);
     const sessions = [1, 2, 3].map((shift) => {
-      const on = person.reg && !person.offline;
-      const value = on ? "1" : "";
+      const on = board.stations.some((station) => sheetOn(board, ui.sheetMarks, person.name, station, shift));
+      const value = on ? "1" : "0";
       const col = shift + 1;
       return `<td class="box ${on ? "here" : ""} ${shift === 1 ? "g1" : ""}${gridPicked(row, col)}" data-r="${row}" data-c="${col}" data-v="${value}">${value}</td>`;
     }).join("");
@@ -2715,23 +2720,30 @@ function oldSheet(data, board, seats, changed, fill) {
         return `<td class="box ${tone} ${shift === 1 ? "g1" : ""}${gridPicked(row, col)}" data-r="${row}" data-c="${col}" data-v="${value}" data-toggle="1" data-name="${esc(person.name)}" data-station="${esc(station)}" data-shift="${shift}" aria-label="${esc(label)}">${value}${moved ? "·" : ""}</td>`;
       }).join("");
     }).join("");
+    const pads = Array.from({ length: pad * 3 }, (_, index) => {
+      const col = 5 + board.stations.length * 3 + index;
+      return `<td class="box ${index % 3 === 0 ? "g1" : ""}${gridPicked(row, col)}" data-r="${row}" data-c="${col}" data-v=""></td>`;
+    }).join("");
     const floats = [1, 2, 3].map((shift) => {
       const placed = board.stations.some((station) => sheetOn(board, ui.sheetMarks, person.name, station, shift));
       const training = seats.some((seat) => seat.name === person.name && seat.shift === shift);
       const spare = !person.offline && person.reg && !placed && !training;
       const col = floatStart + shift - 1;
-      const value = spare ? "1" : "";
-      return `<td class="box ${spare ? `c${shift}` : ""} ${shift === 1 ? "g1" : ""}${gridPicked(row, col)}" data-r="${row}" data-c="${col}" data-v="${value}">${value}</td>`;
+      return `<td class="box ${spare ? `c${shift}` : ""} ${shift === 1 ? "g1" : ""}${gridPicked(row, col)}" data-r="${row}" data-c="${col}" data-v=""></td>`;
     }).join("");
     const vacs = [1, 2, 3].map((shift) => {
-      const col = floatStart + 3 + shift - 1;
+      const col = vacStart + shift - 1;
       const value = person.offline ? "1" : "";
       return `<td class="box ${person.offline ? `c${shift}` : ""} ${shift === 1 ? "g1" : ""}${gridPicked(row, col)}" data-r="${row}" data-c="${col}" data-v="${value}">${value}</td>`;
     }).join("");
+    const absent = [1, 2, 3].map((shift) => {
+      const col = absStart + shift - 1;
+      return `<td class="box ${shift === 1 ? "g1" : ""}${gridPicked(row, col)}" data-r="${row}" data-c="${col}" data-v=""></td>`;
+    }).join("");
     const code = initials(person.name);
-    return `<tr><td class="code${gridPicked(row, 0)}" data-r="${row}" data-c="0" data-v="${esc(code)}" data-sticky="1">${esc(code)}</td><td class="who${gridPicked(row, 1)}" data-r="${row}" data-c="1" data-v="${esc(person.name)}" data-sticky="1">${esc(person.name)}</td>${sessions}${stations}${floats}${vacs}</tr>`;
+    return `<tr><td class="code${gridPicked(row, 0)}" data-r="${row}" data-c="0" data-v="${esc(code)}" data-sticky="1">${esc(code)}</td><td class="who${gridPicked(row, 1)}" data-r="${row}" data-c="1" data-v="${esc(person.name)}" data-sticky="1">${esc(person.name)}</td>${sessions}${stations}${pads}${floats}${vacs}${absent}</tr>`;
   }).join("");
-  return `<div class="old-scroll scroll gridbox${fill ? " fill" : ""}" data-paste="rota" data-grid="1"><table class="old" data-testid="old-style-table"><thead><tr><th rowspan="2"></th><th rowspan="2" class="who">Name</th><th colspan="3">Session</th>${headStations}<th class="stn" colspan="3" rowspan="2">Float</th><th class="stn" colspan="3" rowspan="2">Vac</th></tr><tr><th class="s1">1</th><th class="s2">2</th><th class="s3">3</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  return `<div class="old-scroll scroll gridbox${fill ? " fill" : ""}" data-paste="rota" data-grid="1"><table class="old" data-testid="old-style-table"><thead><tr><th rowspan="2"></th><th rowspan="2" class="who">Name</th><th colspan="3">Session</th>${headStations}${headPad}<th class="stn" colspan="3" rowspan="2">Float</th><th class="stn" colspan="3" rowspan="2">Vac</th><th class="stn" colspan="3" rowspan="2">Abs</th></tr><tr><th class="s1">1st</th><th class="s2">2nd</th><th class="s3">3rd</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 function viewRota() {
