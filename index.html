@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- pages 21 nov float -->
+<!-- pages 21 nov gap -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>G.Cole Rotation Optimizer</title>
@@ -2647,9 +2647,7 @@ function sheetOn(board, marks, name, station, shift) {
 function sessionJobs(board, seats, name, shift) {
   let count = 0;
   for (const station of board.stations) {
-    const on = sheetOn(board, ui.sheetMarks, name, station, shift);
-    const train = seats.some((seat) => seat.name === name && seat.station === station && seat.shift === shift);
-    if (on || train) count += 1;
+    if (sheetOn(board, ui.sheetMarks, name, station, shift)) count += 1;
   }
   return count;
 }
@@ -2716,6 +2714,9 @@ function toggleSheet(name, station, shift) {
 }
 
 function oldExcel(data, board, seats) {
+  const gaps = state.zoneId === "trim-4-b" ? ["36R"] : [];
+  const slots = state.zoneId === "trim-4-b" ? 25 : board.stations.length;
+  const pad = Math.max(0, slots - board.stations.length);
   return sheetPeople(data, board).map((person) => {
     const cells = [];
     for (const station of board.stations) {
@@ -2724,7 +2725,16 @@ function oldExcel(data, board, seats) {
         const train = seats.some((seat) => seat.name === person.name && seat.station === station && seat.shift === shift);
         cells.push(on || train ? "1" : "");
       }
+      if (gaps.includes(station)) cells.push("", "", "");
     }
+    for (let index = 0; index < pad * 3; index += 1) cells.push("");
+    for (const shift of [1, 2, 3]) {
+      const placed = board.stations.some((station) => sheetOn(board, ui.sheetMarks, person.name, station, shift));
+      const on = !placed && !person.offline && floatOn(board, person.name, shift);
+      cells.push(on ? "1" : "");
+    }
+    for (const shift of [1, 2, 3]) cells.push(person.offline ? "1" : "");
+    cells.push("", "", "");
     return cells.join("\t");
   }).join("\n");
 }
@@ -2751,39 +2761,53 @@ function oldSheet(data, board, seats, changed, fill) {
       }
     }
   }
+  const gaps = state.zoneId === "trim-4-b" ? ["36R"] : [];
+  const gapCount = board.stations.filter((station) => gaps.includes(station)).length;
   const slots = state.zoneId === "trim-4-b" ? 25 : board.stations.length;
   const pad = Math.max(0, slots - board.stations.length);
-  const floatStart = 5 + slots * 3;
+  const padStart = 5 + (board.stations.length + gapCount) * 3;
+  const floatStart = padStart + pad * 3;
   const vacStart = floatStart + 3;
   const absStart = vacStart + 3;
-  const headStations = board.stations.map((station) => `<th class="stn" colspan="3" rowspan="2">${esc(station)}</th>`).join("");
+  const headStations = board.stations.map((station) => {
+    const cell = `<th class="stn" colspan="3" rowspan="2">${esc(station)}</th>`;
+    return gaps.includes(station) ? `${cell}<th class="stn" colspan="3" rowspan="2" title="37L hidden"></th>` : cell;
+  }).join("");
   const headPad = Array.from({ length: pad }, () => `<th class="stn" colspan="3" rowspan="2"></th>`).join("");
   const rows = people.map((person, row) => {
     const blocked = !!(person.b1 && person.b2 && person.b3);
     const sessions = [1, 2, 3].map((shift) => {
       const count = sessionJobs(board, seats, person.name, shift);
       const value = String(count);
-      const tone = count >= 2 ? "clash" : count === 1 ? "here" : "";
+      const tone = count > 0 ? "here" : "";
       const col = shift + 1;
       return `<td class="box ${tone} ${shift === 1 ? "g1" : ""}${gridPicked(row, col)}" data-r="${row}" data-c="${col}" data-v="${value}">${value}</td>`;
     }).join("");
     const stations = board.stations.map((station, stationIndex) => {
       const qualified = !!(person.quals && person.quals[station] && !(person.blocked && person.blocked[station]));
       const training = !!(person.training && person.training[station] && !(person.quals && person.quals[station]) && !(person.blocked && person.blocked[station]));
-      return [1, 2, 3].map((shift) => {
+      const gapsBefore = board.stations.slice(0, stationIndex).filter((item) => gaps.includes(item)).length;
+      const cells = [1, 2, 3].map((shift) => {
         const on = sheetOn(board, ui.sheetMarks, person.name, station, shift);
         const train = seats.some((seat) => seat.name === person.name && seat.station === station && seat.shift === shift);
         const moved = on && changed.has(`${station}|${shift}`);
         const clash = on && (counts.get(`${station}|${shift}`) || 0) > 1;
         const tone = clash ? "clash" : training ? "train" : (qualified || on) ? `c${shift}` : blocked ? "block" : "";
         const label = `${person.name}, ${station}, session ${shift}${on ? ", on" : train ? ", training" : ", empty"}`;
-        const col = 5 + stationIndex * 3 + (shift - 1);
+        const col = 5 + (stationIndex + gapsBefore) * 3 + (shift - 1);
         const value = on || train ? "1" : "";
         return `<td class="box ${tone} ${shift === 1 ? "g1" : ""}${gridPicked(row, col)}" data-r="${row}" data-c="${col}" data-v="${value}" data-toggle="1" data-name="${esc(person.name)}" data-station="${esc(station)}" data-shift="${shift}" aria-label="${esc(label)}">${value}${moved ? "·" : ""}</td>`;
       }).join("");
+      if (!gaps.includes(station)) return cells;
+      const gapCol = 5 + (stationIndex + gapsBefore + 1) * 3;
+      const hidden = [1, 2, 3].map((shift) => {
+        const col = gapCol + shift - 1;
+        return `<td class="box ${shift === 1 ? "g1" : ""}${gridPicked(row, col)}" data-r="${row}" data-c="${col}" data-v=""></td>`;
+      }).join("");
+      return cells + hidden;
     }).join("");
     const pads = Array.from({ length: pad * 3 }, (_, index) => {
-      const col = 5 + board.stations.length * 3 + index;
+      const col = padStart + index;
       return `<td class="box ${index % 3 === 0 ? "g1" : ""}${gridPicked(row, col)}" data-r="${row}" data-c="${col}" data-v=""></td>`;
     }).join("");
     const floats = [1, 2, 3].map((shift) => {
